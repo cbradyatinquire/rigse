@@ -34,6 +34,7 @@ development: &non_production_settings
   active_school_levels: *active_school_levels 
   active_grades: *active_grades
   theme: default
+  ot_container: org.concord.otrunk.ui.OTRITESContainer
   help_email: rites-investigations@concord.org
   maven_jnlp_families:
     - "all-otrunk-snapshot"
@@ -65,6 +66,8 @@ staging:
   states_and_provinces: *states_and_provinces
   active_school_levels: *active_school_levels 
   active_grades: *active_grades 
+  theme: default
+  ot_container: org.concord.otrunk.ui.OTRITESContainer
   site_district: RITES Investigations-district
   site_school: RITES Investigations-school
   help_email: rites-investigations@concord.org
@@ -92,6 +95,8 @@ production:
   states_and_provinces: *states_and_provinces
   active_school_levels: *active_school_levels 
   active_grades: *active_grades 
+  ot_container: org.concord.otrunk.ui.OTRITESContainer
+  theme: default
   site_district: RITES Investigations-district
   site_school: RITES Investigations-school
   help_email: rites-investigations@concord.org
@@ -104,7 +109,7 @@ production:
   default_maven_jnlp:
     server: concord
     family: all-otrunk-snapshot
-    version: 0.1.0-20090724.190238
+    version: 0.1.0-20090724.190238-a
   valid_sakai_instances:
     - http://localhost:3000/
   net_logo_package_name: otrunknl4

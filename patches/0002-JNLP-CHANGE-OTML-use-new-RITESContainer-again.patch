@@ -1,0 +1,72 @@
+From 81d30d26375dcd2e5681f1cbbcfa88cc12873d29 Mon Sep 17 00:00:00 2001
+From: Noah Paessel <knowuh@gmail.com>
+Date: Wed, 7 Apr 2010 15:42:36 -0400
+Subject: [PATCH 2/2] JNLP CHANGE*: OTML use new RITESContainer (again)
+
+This reverts commit 841b9c5a1fcbb2e6e44834b7f5b32e753f1ed0ac.
+---
+ app/helpers/otml_helper.rb               |    6 +++---
+ app/views/activities/_show.otml.haml     |    2 +-
+ app/views/investigations/_show.otml.haml |    2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/app/helpers/otml_helper.rb b/app/helpers/otml_helper.rb
+index f163cb3..51c1b53 100644
+--- a/app/helpers/otml_helper.rb
++++ b/app/helpers/otml_helper.rb
+@@ -74,7 +74,7 @@
+       org.concord.otrunk.ui.swing.OTChoiceViewConfig
+       org.concord.otrunk.ui.OTCurriculumUnit
+       org.concord.otrunk.ui.OTText
+-      org.concord.otrunk.ui.OTUDLContainer
++      org.concord.otrunk.ui.OTRITESContainer
+       org.concord.otrunk.ui.OTSection
+       org.concord.otrunk.ui.menu.OTMenu
+       org.concord.otrunk.ui.menu.OTMenuRule
+@@ -151,7 +151,7 @@
+       ['multi_data_graph_view', 'org.concord.datagraph.state.OTMultiDataGraph', 'org.concord.datagraph.state.OTMultiDataGraphView'],
+       ['button_view', 'org.concord.otrunk.control.OTButton', 'org.concord.otrunk.control.OTButtonView'],
+       ['data_table_view', 'org.concord.data.state.OTDataTable', 'org.concord.data.state.OTDataTableView'],
+-      ['udl_container', 'org.concord.otrunk.ui.OTUDLContainer', 'org.concord.otrunk.ui.OTUDLContainerView'],
++      ['rites_container', 'org.concord.otrunk.ui.OTRITESContainer', 'org.concord.otrunk.ui.OTRITESContainerView'],
+       ['curriculum_unit_view', 'org.concord.otrunk.ui.OTCurriculumUnit', 'org.concord.otrunk.ui.swing.OTCurriculumUnitView'],
+       ['section_view', 'org.concord.otrunk.ui.OTSection', 'org.concord.otrunk.ui.swing.OTSectionView'],
+       ['menu_page_view', 'org.concord.otrunk.ui.menu.OTMenu', 'org.concord.otrunk.ui.menu.OTMenuPageView'],
+@@ -197,7 +197,7 @@
+ #      ['multi_data_graph_view', 'org.concord.datagraph.state.OTMultiDataGraph', 'org.concord.datagraph.state.OTMultiDataGraphView'],
+ #      ['button_view', 'org.concord.otrunk.control.OTButton', 'org.concord.otrunk.control.OTButtonView'],
+       ['data_table_edit_view', 'org.concord.data.state.OTDataTable', 'org.concord.otrunk.ui.swing.OTDataTableEditView'],
+-      ['udl_container_edit_view', 'org.concord.otrunk.ui.OTUDLContainer', 'org.concord.otrunk.ui.OTUDLContainerEditView'],
++      ['udl_container_edit_view', 'org.concord.otrunk.ui.OTRITESContainer', 'org.concord.otrunk.ui.OTRITESContainerEditView'],
+       ['curriculum_unit_edit_view', 'org.concord.otrunk.ui.OTCurriculumUnit', 'org.concord.otrunk.ui.swing.OTCurriculumUnitEditView'],
+ #      ['section_view', 'org.concord.otrunk.ui.OTSection', 'org.concord.otrunk.ui.swing.OTSectionView'],
+       ['menu_page_edit_view', 'org.concord.otrunk.ui.menu.OTMenu', 'org.concord.otrunk.ui.menu.OTMenuPageEditView'],
+diff --git a/app/views/activities/_show.otml.haml b/app/views/activities/_show.otml.haml
+index 0d2a43d..834fd73 100644
+--- a/app/views/activities/_show.otml.haml
++++ b/app/views/activities/_show.otml.haml
+@@ -1,7 +1,7 @@
+ = render :partial => 'sections/show', :locals => {:teacher_mode => teacher_mode}, :collection => activity.sections, :as => :section
+ 
+ - content_for("activity_#{dom_id_for(activity)}".to_sym) do
+-  %OTUDLContainer{ :leftPanelWidth => activity.left_nav_panel_width }
++  %OTRITESContainer{ :leftPanelWidth => activity.left_nav_panel_width }
+     %title
+       %OTCompoundDoc
+         %bodyText
+diff --git a/app/views/investigations/_show.otml.haml b/app/views/investigations/_show.otml.haml
+index ddca8fb..e16d303 100644
+--- a/app/views/investigations/_show.otml.haml
++++ b/app/views/investigations/_show.otml.haml
+@@ -1,7 +1,7 @@
+ = render :partial => 'activities/show', :locals => {:teacher_mode => teacher_mode}, :collection => investigation.activities, :as => :activity
+ 
+ - content_for(:investigation) do
+-  %OTUDLContainer{ :leftPanelWidth => investigation.left_nav_panel_width, :version=>3 }
++  %OTRITESContainer{ :leftPanelWidth => investigation.left_nav_panel_width, :version=>3 }
+     %title
+       %OTCompoundDoc
+         %bodyText
+-- 
+1.6.6.2
+

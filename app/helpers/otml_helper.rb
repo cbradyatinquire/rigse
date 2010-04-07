@@ -4,6 +4,18 @@
     return APP_CONFIG[:net_logo_package_name] || "otrunknl4"
   end
   
+  def ot_container
+    return APP_CONFIG[:ot_container] || "org.concord.otrunk.ui.OTUDLContainer"
+  end
+  
+  def ot_container_view
+    return APP_CONFIG[:ot_container_view] || "#{ot_container_name}View"
+  end
+  
+  def ot_container_edit_view
+    return APP_CONFIG[:ot_container_edit_view] || "#{ot_container_name}EditView"
+  end
+  
   def ot_menu_display_name(object)
     if teacher_only?(object) 
       return "+ #{object.name}"
