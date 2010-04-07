@@ -17,6 +17,8 @@ development: &id003
   site_url: http://localhost:3000
   runnables_use: otrunk_jnlp
   runnable_mime_type: 
+  net_logo_package_name: otrunknl41
+  ot_container: org.concord.otrunk.ui.OTRITESContainer
   top_level_container_name: investigation
   site_school: RITES Investigations-school
   description: ""

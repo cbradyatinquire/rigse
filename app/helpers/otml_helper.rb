@@ -9,11 +9,11 @@
   end
   
   def ot_container_view
-    return APP_CONFIG[:ot_container_view] || "#{ot_container_name}View"
+    return APP_CONFIG[:ot_container_view] || "#{ot_container}View"
   end
   
   def ot_container_edit_view
-    return APP_CONFIG[:ot_container_edit_view] || "#{ot_container_name}EditView"
+    return APP_CONFIG[:ot_container_edit_view] || "#{ot_container}EditView"
   end
   
   def ot_menu_display_name(object)
@@ -86,7 +86,6 @@
       org.concord.otrunk.ui.swing.OTChoiceViewConfig
       org.concord.otrunk.ui.OTCurriculumUnit
       org.concord.otrunk.ui.OTText
-      org.concord.otrunk.ui.OTRITESContainer
       org.concord.otrunk.ui.OTSection
       org.concord.otrunk.ui.menu.OTMenu
       org.concord.otrunk.ui.menu.OTMenuRule
@@ -137,6 +136,7 @@
       org.concord.smartgraph.OTSmartGraphTool
     } + data_filter_inports + (@otrunk_imports || []).uniq
     imports <<  "org.concord.#{net_logo_package_name}.OTNLogoModel"
+    imports << "#{ot_container}"
   end
   
   def ot_imports
@@ -163,7 +163,7 @@
       ['multi_data_graph_view', 'org.concord.datagraph.state.OTMultiDataGraph', 'org.concord.datagraph.state.OTMultiDataGraphView'],
       ['button_view', 'org.concord.otrunk.control.OTButton', 'org.concord.otrunk.control.OTButtonView'],
       ['data_table_view', 'org.concord.data.state.OTDataTable', 'org.concord.data.state.OTDataTableView'],
-      ['rites_container', 'org.concord.otrunk.ui.OTRITESContainer', 'org.concord.otrunk.ui.OTRITESContainerView'],
+      ['rites_container', "#{ot_container}", "#{ot_container_view}"],
       ['curriculum_unit_view', 'org.concord.otrunk.ui.OTCurriculumUnit', 'org.concord.otrunk.ui.swing.OTCurriculumUnitView'],
       ['section_view', 'org.concord.otrunk.ui.OTSection', 'org.concord.otrunk.ui.swing.OTSectionView'],
       ['menu_page_view', 'org.concord.otrunk.ui.menu.OTMenu', 'org.concord.otrunk.ui.menu.OTMenuPageView'],
@@ -209,7 +209,7 @@
 #      ['multi_data_graph_view', 'org.concord.datagraph.state.OTMultiDataGraph', 'org.concord.datagraph.state.OTMultiDataGraphView'],
 #      ['button_view', 'org.concord.otrunk.control.OTButton', 'org.concord.otrunk.control.OTButtonView'],
       ['data_table_edit_view', 'org.concord.data.state.OTDataTable', 'org.concord.otrunk.ui.swing.OTDataTableEditView'],
-      ['udl_container_edit_view', 'org.concord.otrunk.ui.OTRITESContainer', 'org.concord.otrunk.ui.OTRITESContainerEditView'],
+      ['udl_container_edit_view', "#{ot_container}", "#{ot_container_edit_view}"],
       ['curriculum_unit_edit_view', 'org.concord.otrunk.ui.OTCurriculumUnit', 'org.concord.otrunk.ui.swing.OTCurriculumUnitEditView'],
 #      ['section_view', 'org.concord.otrunk.ui.OTSection', 'org.concord.otrunk.ui.swing.OTSectionView'],
       ['menu_page_edit_view', 'org.concord.otrunk.ui.menu.OTMenu', 'org.concord.otrunk.ui.menu.OTMenuPageEditView'],
