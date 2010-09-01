@@ -3,6 +3,7 @@ set :stages, %w(
   itsisu-dev itsisu-staging itsisu-production 
   sg-dev smartgraphs-staging smartgraphs-production
   has-dev has-staging has-production
+  geniverse-dev
   xproject-dev
   fall2009 jnlp-staging seymour
   sparks-dev)
@@ -11,6 +12,7 @@ set :default_stage, "development"
 require 'capistrano/ext/multistage'
 require 'haml'
 
+require 'lib/yaml_editor'
 def render(file,opts={})
   template = File.read(file)
   haml_engine = Haml::Engine.new(template)
@@ -520,6 +522,9 @@ namespace :installer do
     %x[cp config/installer.yml config/installer.yml.mine]
     download("#{deploy_to}/#{current_dir}/config/installer.yml", "config/installer.yml", :via => :scp)
     # build the installers
+    editor = YamlEditor.new('./config/installer.yml')
+    editor.edit
+    editor.write_file
     %x[rake build:installer:build_all ]
     
     # post the config back up to remote server
@@ -540,4 +545,4 @@ before 'deploy:update_code', 'deploy:make_directory_structure'
 after 'deploy:update_code', 'deploy:shared_symlinks'
 after 'deploy:symlink', 'deploy:create_asset_packages'
 after 'deploy:create_asset_packages', 'deploy:cleanup'
-
+after 'installer:create', 'deploy:restart'
