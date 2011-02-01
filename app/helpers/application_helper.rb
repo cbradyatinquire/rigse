@@ -181,11 +181,12 @@ module ApplicationHelper
   def render_top_level_container_list_partial(locals)
     container = top_level_container_name.pluralize
     container_sym = top_level_container_name.pluralize.to_sym
-    container_class = top_level_container_name.capitalize.constantize
+    container_class = top_level_container_name.classify.constantize
+    hide_print = locals.delete(:hide_print) || false
     if container_class.respond_to?(:search_list)
-      render :partial => "#{container}/runnable_list.html.haml", :locals => { container_sym => container_class.search_list(locals) }
+      render :partial => "#{container}/runnable_list", :locals => { container_sym => container_class.search_list(locals), :hide_print => hide_print }
     else
-      render :partial => "#{container}/runnable_list.html.haml", :locals => { container_sym => container_class.find(:all) }
+      render :partial => "#{container}/runnable_list", :locals => { container_sym => container_class.find(:all), :hide_print => hide_print }
     end
   end
 
@@ -293,6 +294,14 @@ module ApplicationHelper
         else
           haml_tag :div, :id => dom_id_for(model, "#{dom_prefix}_toggle"), :class => 'accordion_toggle_closed accordion_toggle'
         end
+        
+        unless options[:usage_count].blank?
+          haml_tag :div, :class => 'accordion_count' do
+            haml_concat options[:usage_count]
+          end
+        end
+        
+        haml_tag :div, :class => 'empty_break'
         haml_tag :div, :id => dom_id_for(model, "#{dom_prefix}_content"), :class => 'accordion_content', :style=>'display: none;' do
           if block_given?
             yield
@@ -301,6 +310,11 @@ module ApplicationHelper
 
       end
     end
+  end
+  
+  def sort_dropdown(selected)
+    sort_options = [ [ "Newest", "created_at DESC" ], [ "Alphabetical", "name ASC" ], [ "Popularity", "offerings_count DESC" ] ]
+    select nil, :sort_order, sort_options, {:selected => selected, :include_blank => true }
   end
 
   def otrunk_edit_button_for(component, options={})
@@ -387,13 +401,25 @@ module ApplicationHelper
       :title => "Preview the #{component_display_name}: '#{name}' as a Java Web Start application. The first time you do this it may take a while to startup as the Java code is downloaded and saved on your hard drive.")
   end
 
-  def report_link_for(reportable, action='report', link_text='Report ')
+  def report_link_for(reportable, action='report', link_text='Report ', title=nil)
     reportable_display_name = reportable.class.display_name.downcase
     action_string = action.gsub('_', ' ')
     name = reportable.name
     url = polymorphic_url(reportable, :action => action)
-    link_to(link_text, url, :popup => true,
-      :title => "Display a #{action_string} for the #{reportable_display_name}: '#{name}' in a new browser window.")
+    if title.nil?
+      title = "Display a #{action_string} for the #{reportable_display_name}: '#{name}' in a new browser window."
+    end
+    link_to(link_text, url, :popup => true, :title => title)
+  end
+  
+  def activation_toggle_link_for(activatable, action='activate', link_text='Activate', title=nil)
+    activatable_display_name = activatable.class.display_name.downcase
+    action_string = action.gsub('_', ' ')
+    url = polymorphic_url(activatable, :action => action)
+    if title.nil?
+      title = "#{action_string} the #{activatable_display_name}: '#{activatable.name}'."
+    end
+    link_to(link_text, url, :title => title)
   end
 
   def run_link_for(component, as_name=nil, params={})
@@ -586,51 +612,65 @@ module ApplicationHelper
   end
   
   def learner_report_summary(learner, opts = {})
-    options = { :omit_delete => true, :omit_edit => true, :hide_component_name => true }
+    options = { :omit_delete => true, :omit_edit => true, :hide_component_name => true, :hide_statistics => true, :show_selection_controls => true }
     options.update(opts)
-    reportUtil = Report::Util.factory(learner.offering)
-    questions = reportUtil.embeddables
-    answered  = reportUtil.saveables(:learner => learner, :answered => true)
+    unless options[:hide_statistics]
+      reportUtil = Report::Util.factory(learner.offering)
+      questions = reportUtil.embeddables
+      answered  = reportUtil.saveables(:learner => learner, :answered => true)
+    end
     capture_haml do
       haml_tag :div, :class => 'action_menu' do
         haml_tag :div, :class => 'action_menu_header_left' do
           haml_concat title_for_component(learner.offering, options)
+          if options[:show_selection_controls]
+            haml_concat selectAllNone(dom_id_for(learner.offering, :details))
+          end
         end
       end
-      haml_tag :div do
-        haml_tag :p do
-          haml_concat("#{questions.size} questions, #{answered.size} have been answered")
+      unless options[:hide_statistics]
+        haml_tag :div do
+          haml_tag :p do
+            haml_concat("#{questions.size} questions, #{answered.size} have been answered")
+          end
         end
       end
     end
   end
   
   def offering_report_summary(offering, opts = {})
-    options = { :omit_delete => true, :omit_edit => true, :hide_component_name => true }
+    options = { :omit_delete => true, :omit_edit => true, :hide_component_name => true, :hide_statistics => true, :show_selection_controls => true }
     options.update(opts)
-    reportUtil = Report::Util.factory(offering)
-    questions = reportUtil.embeddables(:type => options[:type])
-    type_id_lambda = lambda{|s|
-      types = Investigation.reportable_types.map{|t| t.to_s.demodulize.underscore }
-      type = types.detect{|t| s.respond_to?(t) }
-      if type
-        type_id = "#{type}_id"
-        embeddable_identifier = "#{type}-#{s.send(type_id)}"
-      else
-        nil
-      end
-    }
-    answered = reportUtil.saveables_by_embeddable
-    answered = answered.select{|s,v| s.kind_of? options[:type]} if options[:type]
+    unless options[:hide_statistics]
+      reportUtil = Report::Util.factory(offering)
+      questions = reportUtil.embeddables(:type => options[:type])
+      type_id_lambda = lambda{|s|
+        types = Investigation.reportable_types.map{|t| t.to_s.demodulize.underscore }
+        type = types.detect{|t| s.respond_to?(t) }
+        if type
+          type_id = "#{type}_id"
+          embeddable_identifier = "#{type}-#{s.send(type_id)}"
+        else
+          nil
+        end
+      }
+      answered = reportUtil.saveables_by_embeddable
+      answered = answered.select{|s,v| s.kind_of? options[:type]} if options[:type]
+    end
     capture_haml do
       haml_tag :div, :class => 'action_menu' do
         haml_tag :div, :class => 'action_menu_header_left' do
           haml_concat title_for_component(offering, options)
+          if options[:show_selection_controls]
+            haml_concat selectAllNone(dom_id_for(offering, :details))
+          end
         end
       end
-      haml_tag :div do
-        haml_tag :p do
-          haml_concat("#{questions.size} questions, #{answered.size} have been answered")
+      unless options[:hide_statistics]
+        haml_tag :div do
+          haml_tag :p do
+            haml_concat("#{questions.size} questions, #{answered.size} have been answered")
+          end
         end
       end
     end
@@ -726,7 +766,7 @@ module ApplicationHelper
         haml_tag :div, :class => 'action_menu_header_left'
       end
       haml_tag(:div) {
-        haml_tag(:div, :style => 'background-color: white; border: 1px dotted black;') {
+        haml_tag(:div, :class => 'item') {
           haml_concat(multiple_choice.prompt)
         }
         haml_tag(:div) {
@@ -739,12 +779,13 @@ module ApplicationHelper
             }
             all_choices.each_with_index do |choice,i|
               answer_count = answer_counts.has_key?(choice.choice) ? answer_counts[choice.choice] : 0
+              correctness = choice.is_correct ? "correct" : "incorrect"
               haml_tag(:div, :class => 'row') {
-                haml_tag(:div, :class => 'cell optionlabel') {
+                haml_tag(:div, :class => "cell optionlabel #{correctness}") {
                   haml_concat("#{i+1}. #{choice.choice}")
                 }
                 haml_tag(:div, :class => 'cell optionbar') {
-                  haml_tag(:div, :class => "optionbarbar #{choice.is_correct ? "correct" : "incorrect"}", :id => "question_id_#{multiple_choice.id}_bar_graph_choice_#{choice.id}", :style => "width: #{percent(answer_count, learners.size)}%;") {
+                  haml_tag(:div, :class => "optionbarbar #{correctness}", :id => "question_id_#{multiple_choice.id}_bar_graph_choice_#{choice.id}", :style => "width: #{percent(answer_count, learners.size)}%;") {
                     haml_concat("&nbsp;")
                   }
                 }
@@ -854,6 +895,14 @@ module ApplicationHelper
           haml_concat dropdown_link_for(:text => "Run", :id=> dom_id_for(offering.runnable,"run_rollover"), :content_id=> dom_id_for(offering.runnable,"run_dropdown"),:title =>"run this #{top_level_container_name}")
           haml_concat " | "
           haml_concat report_link_for(offering, 'report', 'Report')
+          haml_concat " | "
+
+          if offering.active?
+            haml_concat activation_toggle_link_for(offering, 'deactivate', 'Deactivate')
+          else
+            haml_concat activation_toggle_link_for(offering, 'activate', 'Activate')
+          end
+          
           # haml_concat " | "
           # haml_concat report_link_for(offering, 'open_response_report','OR Report')
           # haml_concat " | "
@@ -1161,6 +1210,18 @@ module ApplicationHelper
       end
     end
     message
+  end
+  
+  def selectAllNone(parentId)
+    capture_haml do
+      haml_tag :span, :class => 'filter_selection_control' do
+        haml_concat " ("
+        haml_tag :a, "all", :onClick => "selectAll('##{parentId}'); return false;", :href => '#'
+        haml_concat " | "
+        haml_tag :a, "none", :onClick => "selectNone('##{parentId}'); return false;", :href => '#'
+        haml_concat " )"
+      end
+    end
   end
   
   def use_contentflow

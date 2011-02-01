@@ -5,7 +5,11 @@ class Portal::ClazzesController < ApplicationController
   # this only protects management actions:
   include RestrictedPortalController
   
+  before_filter :teacher_admin_or_config, :only => [:class_list]
   
+  def current_clazz
+    Portal::Clazz.find(params[:id])
+  end
   
   public
   # GET /portal_clazzes
@@ -240,17 +244,26 @@ class Portal::ClazzesController < ApplicationController
     container = params[:dropped_dom_id]
     offering_id = params[:offering_id]
     @offering = Portal::Offering.find(offering_id)
-    if @offering
+    if (@offering && @offering.can_be_deleted?)
       @runnable = @offering.runnable
       @offering.destroy
       @portal_clazz.reload
+      render :update do |page|
+        page << "var container = $('#{container}');"
+        page << "var element = $('#{dom_id}');"
+        page << "element.remove();"
+        page << "$('flash').update('');"
+        page.insert_html :top, container, :partial => 'shared/runnable', :locals => {:runnable => @runnable}
+      end  
+    else
+      error_msg = "Cannot delete offering with student data. Please deactivate instead."
+      render :update do |page|
+        page << "var element = $('#{dom_id}');"
+        page << "element.show();"
+        page << "$('flash').update('#{error_msg}');"
+        page << "alert('#{error_msg}');"
+      end
     end
-    render :update do |page|
-      page << "var container = $('#{container}');"
-      page << "var element = $('#{dom_id}');"
-      page << "element.remove();"
-      page.insert_html :top, container, :partial => 'shared/runnable', :locals => {:runnable => @runnable}
-    end  
   end
   
   # HACK: Add a student to a clazz
@@ -336,6 +349,14 @@ class Portal::ClazzesController < ApplicationController
       # end
     rescue
       render(:update) { |page| page << "$('flash').update('There was an error while processing your request.')" }
+    end
+  end
+  
+  def class_list
+    @portal_clazz = Portal::Clazz.find_by_id(params[:id])
+    
+    respond_to do |format|
+      format.html { render :layout => 'report'}
     end
   end
     
