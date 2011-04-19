@@ -17,7 +17,6 @@ class Portal::Teacher < ActiveRecord::Base
   # And now (20090813) it appears to be working so I've commented it out.
   # It's presence was generating duplicate school_membership models when a Teacher registered.
 
-
   has_many :school_memberships, :as => :member, :class_name => "Portal::SchoolMembership"
   has_many :schools, :through => :school_memberships, :class_name => "Portal::School", :uniq => true
 
@@ -28,6 +27,8 @@ class Portal::Teacher < ActiveRecord::Base
   # has_many :clazzes, :class_name => "Portal::Clazz", :foreign_key => "teacher_id", :source => :clazz
   has_many :teacher_clazzes, :class_name => "Portal::TeacherClazz", :foreign_key => "teacher_id"
   has_many :clazzes, :through => :teacher_clazzes, :class_name => "Portal::Clazz", :source => :clazz
+
+  belongs_to :favorites, :polymorphic => true
 
   [:first_name, :login, :password, :last_name, :email, :vendor_interface, :anonymous?, :has_role?].each { |m| delegate m, :to => :user }
 

@@ -30,6 +30,8 @@
     %div{ :id => dom_id_for(investigation), :class => 'runnable' }
       - link_text = current_user.portal_teacher || current_user.has_role?("manager", "admin") ? teacher_preview_button_for(investigation) : ""
       - link_text += preview_button_for(investigation) + name_for_component(investigation, :hide_componenent_name => true)
+      - unless current_user.portal_teacher.blank?
+        - link_text += button_to "FAVORITE", {:action => :create, :controller => :favorites, :runnable => investigation, :type => investigation.class, :teacher => current_user.portal_teacher}, :class => "favorite_link"
 
       - accordion_options = {}
       - unless session[:include_usage_count].blank?

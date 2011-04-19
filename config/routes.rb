@@ -178,6 +178,7 @@ ActionController::Routing::Routes.draw do |map|
     portal.resources :nces06_schools
     # portal.home 'readme', :controller => 'home', :action => 'readme'
     # oops no controller for home any more, see http://www.pivotaltracker.com/story/show/2605204
+    portal.resources :favorites, :only => [:create, :destroy]
   end
 
 
@@ -432,6 +433,7 @@ ActionController::Routing::Routes.draw do |map|
 
   # not being used, but being tested
   map.resources :images
+
 
   # Home Controller
   map.installer '/missing_installer/:os', :controller => 'home', :action => 'missing_installer', :os => "osx"
