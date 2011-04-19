@@ -17,5 +17,5 @@ Then /^the investigation "([^"]*)" should be a favorite of the teacher "([^"]*)"
   investigation = Investigation.find_by_name inv_name
   user = User.find_by_login teacher_name
   teacher = user.portal_teacher
-  teacher.favorites.should == investigation
+  teacher.favorites.should include investigation
 end

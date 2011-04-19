@@ -9,7 +9,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20110419192644) do
+ActiveRecord::Schema.define(:version => 20110411172214) do
 
   create_table "activities", :force => true do |t|
     t.integer  "user_id"
@@ -1722,8 +1722,6 @@ ActiveRecord::Schema.define(:version => 20110419192644) do
     t.datetime "updated_at"
     t.integer  "domain_id"
     t.integer  "offerings_count",               :default => 0
-    t.integer  "favorites_id"
-    t.string   "favorites_type"
   end
 
   add_index "portal_teachers", ["user_id"], :name => "index_portal_teachers_on_user_id"
