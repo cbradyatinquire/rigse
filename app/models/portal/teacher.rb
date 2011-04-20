@@ -28,7 +28,7 @@ class Portal::Teacher < ActiveRecord::Base
   has_many :teacher_clazzes, :class_name => "Portal::TeacherClazz", :foreign_key => "teacher_id"
   has_many :clazzes, :through => :teacher_clazzes, :class_name => "Portal::Clazz", :source => :clazz
 
-  has_many :favorites
+  has_many :favorites, :foreign_key => "portal_teacher_id"
 
   [:first_name, :login, :password, :last_name, :email, :vendor_interface, :anonymous?, :has_role?].each { |m| delegate m, :to => :user }
 

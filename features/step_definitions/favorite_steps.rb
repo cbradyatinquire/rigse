@@ -13,9 +13,25 @@ When /^I click the favorite link for the investigation "(.*)"$/ do |inv_name|
   }
 end
 
+When /^I click the favorite link for the resource page "([^"]*)"$/ do |rp_name|
+  rpage = ResourcePage.find_by_name rp_name
+  steps %Q{
+    When I press "FAVORITE" within "#resource_page_#{rpage.id}"
+  }
+end
+
 Then /^the investigation "([^"]*)" should be a favorite of the teacher "([^"]*)"$/ do |inv_name, teacher_name|
   investigation = Investigation.find_by_name inv_name
   user = User.find_by_login teacher_name
   teacher = user.portal_teacher
-  teacher.favorites.should include investigation
+  favorite = Favorite.find_by_favoritable_id investigation
+  teacher.favorites.should include favorite
+end
+
+Then /^the resource page "([^"]*)" should be a favorite of the teacher "([^"]*)"$/ do |rp_name, teacher_name|
+  rpage = ResourcePage.find_by_name rp_name
+  user = User.find_by_login teacher_name
+  teacher = user.portal_teacher
+  favorite = Favorite.find_by_favoritable_id rpage
+  teacher.favorites.should include favorite
 end

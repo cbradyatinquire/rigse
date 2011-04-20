@@ -32,3 +32,5 @@ Feature: Teacher has favorite runnables list
     And the investigation "Argle" should have a favorite link
     When I click the favorite link for the investigation "Argle"
     Then the investigation "Argle" should be a favorite of the teacher "teacher"
+    When I click the favorite link for the resource page "Newest"
+    Then the resource page "Newest" should be a favorite of the teacher "teacher"

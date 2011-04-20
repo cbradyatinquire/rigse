@@ -3,7 +3,7 @@ class Portal::FavoritesController < ApplicationController
     teacher = Portal::Teacher.find params[:teacher]
     runnable_type = params[:type].classify.constantize
     runnable = runnable_type.find params[:runnable]
-    teacher.favorites << runnable
-    teacher.save
+    favorite = teacher.favorites.create :favoritable => runnable
+    redirect_to :back
   end
 end
