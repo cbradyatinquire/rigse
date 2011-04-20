@@ -34,3 +34,10 @@ Feature: Teacher has favorite runnables list
     Then the investigation "Argle" should be a favorite of the teacher "teacher"
     When I click the favorite link for the resource page "Newest"
     Then the resource page "Newest" should be a favorite of the teacher "teacher"
+    When I click the favorite link for the external activity "My Activity"
+    Then the external activity "My Activity" should be a favorite of the teacher "teacher"
+    When I am on the class page for "My Class"
+    Then I should see "Your Favorite Assignments"
+    And I should see the investigation "Argle" in the favorite assignments listing
+    And I should see the resource page "Newest" in the favorite assignments listing
+    And I should see the external activity "My Activity" in the favorite assignments listing

@@ -20,18 +20,54 @@ When /^I click the favorite link for the resource page "([^"]*)"$/ do |rp_name|
   }
 end
 
+When /^I click the favorite link for the external activity "([^"]*)"$/ do |ea_name|
+  eact = ExternalActivity.find_by_name ea_name
+  steps %Q{
+    When I press "FAVORITE" within "#external_activity_#{eact.id}"
+  }
+end
+
+Then /^the external activity "([^"]*)" should be a favorite of the teacher "([^"]*)"$/ do |ea_name, teacher_name|
+  eact = ExternalActivity.find_by_name ea_name
+  user = User.find_by_login teacher_name
+  teacher = user.portal_teacher
+  favorite = Favorite.find_by_favoritable_id_and_favoritable_type eact, eact.class.to_s
+  teacher.favorites.should include favorite
+  favorite.favoritable.should == eact
+end
+
 Then /^the investigation "([^"]*)" should be a favorite of the teacher "([^"]*)"$/ do |inv_name, teacher_name|
   investigation = Investigation.find_by_name inv_name
   user = User.find_by_login teacher_name
   teacher = user.portal_teacher
-  favorite = Favorite.find_by_favoritable_id investigation
+  favorite = Favorite.find_by_favoritable_id_and_favoritable_type investigation, investigation.class.to_s
   teacher.favorites.should include favorite
+  favorite.favoritable.should == investigation
 end
 
 Then /^the resource page "([^"]*)" should be a favorite of the teacher "([^"]*)"$/ do |rp_name, teacher_name|
   rpage = ResourcePage.find_by_name rp_name
   user = User.find_by_login teacher_name
   teacher = user.portal_teacher
-  favorite = Favorite.find_by_favoritable_id rpage
+  favorite = Favorite.find_by_favoritable_id_and_favoritable_type rpage, rpage.class.to_s
   teacher.favorites.should include favorite
+  favorite.favoritable.should == rpage
+end
+
+Then /^I should see the investigation "([^"]*)" in the favorite assignments listing$/ do |inv_name|
+  steps %Q{
+    Then I should see "#{inv_name}" within "#favorites_listing"
+  }
+end
+
+Then /^I should see the resource page "([^"]*)" in the favorite assignments listing$/ do |rp_name|
+  steps %Q{
+    Then I should see "#{rp_name}" within "#favorites_listing"
+  }
+end
+
+Then /^I should see the external activity "([^"]*)" in the favorite assignments listing$/ do |ea_name|
+  steps %Q{
+    Then I should see "#{ea_name}" within "#favorites_listing"
+  }
 end

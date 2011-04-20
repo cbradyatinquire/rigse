@@ -1,0 +1,5 @@
+- locals = {:portal_clazz_id => portal_clazz_id, :domain_id => domain_id, :grade_span => grade_span, :name => "", :hide_print => true}
+- locals[:hide_drafts_checkbox] = (!APP_CONFIG[:allow_drafts_in_assignments])
+
+#favorites_listing
+  = render :partial => "shared/favorites_listing", :locals => { :runnables => current_user.portal_teacher.favorites, :hide_print => true }
