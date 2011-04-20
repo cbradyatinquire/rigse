@@ -23,10 +23,10 @@ Feature: Teacher has favorite runnables list
     And the following external activity exists:
       | name        | user    | url   |
       | My Activity | teacher | /home |
+    And I login with username: teacher password: teacher
 
   @javascript
   Scenario: Teacher marks runnable as favorite
-    Given I login with username: teacher password: teacher
     When I am on the class page for "My Class"
     Then I should see "Argle"
     And the investigation "Argle" should have a favorite link
@@ -41,3 +41,13 @@ Feature: Teacher has favorite runnables list
     And I should see the investigation "Argle" in the favorite assignments listing
     And I should see the resource page "Newest" in the favorite assignments listing
     And I should see the external activity "My Activity" in the favorite assignments listing
+
+  @wip
+  @javascript
+  Scenario: Teacher removes runnable from favorites
+    Given the investigation "Argle" is a favorite for the teacher "teacher"
+    When I am on the class page for "My Class"
+    Then I should see "Your Favorite Assignments"
+    And I should see the investigation "Argle" in the favorite assignments listing
+    When I click the remove favorite link for the investigation "Argle"
+    Then the investigation "Argle" should not be a favorite of the teacher "teacher"
