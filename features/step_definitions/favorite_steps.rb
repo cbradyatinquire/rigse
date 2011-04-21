@@ -93,3 +93,11 @@ Then /^the investigation "([^"]*)" should have a favorite link$/ do |inv_name|
     fav.should have_content "FAVORITE"
   end
 end
+
+Then /^there should only be one instance of the investigation "([^"]*)" in the favorites of the teacher "([^"]*)"$/ do |inv_name, teacher_name|
+  investigation = Investigation.find_by_name inv_name
+  user = User.find_by_login teacher_name
+  teacher = user.portal_teacher
+  favorites = Favorite.find_all_by_favoritable_id_and_favoritable_type investigation, investigation.class.to_s
+  favorites.count.should == 1
+end

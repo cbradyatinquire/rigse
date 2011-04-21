@@ -51,5 +51,18 @@ Feature: Teacher has favorite runnables list
     When I click the remove favorite link for the investigation "Argle"
     Then the investigation "Argle" should not be a favorite of the teacher "teacher"
 
+  @javascript
+  Scenario: Favorites can not be duplicates
+    When I am on the class page for "My Class"
+    Then I should see "Argle"
+    And the investigation "Argle" should have a favorite link
+    When I click the favorite link for the investigation "Argle"
+    Then the investigation "Argle" should be a favorite of the teacher "teacher"
+    When I click the favorite link for the investigation "Argle"
+    Then there should only be one instance of the investigation "Argle" in the favorites of the teacher "teacher"
+    When I am on the class page for "My Class"
+    Then I should see "Your Favorite Assignments"
+    And I should see the investigation "Argle" in the favorite assignments listing
+
   @wip
   Scenario: Teacher assigns favorite runnable
