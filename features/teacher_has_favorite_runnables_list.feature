@@ -50,3 +50,6 @@ Feature: Teacher has favorite runnables list
     And I should see the investigation "Argle" in the favorite assignments listing
     When I click the remove favorite link for the investigation "Argle"
     Then the investigation "Argle" should not be a favorite of the teacher "teacher"
+
+  @wip
+  Scenario: Teacher assigns favorite runnable
