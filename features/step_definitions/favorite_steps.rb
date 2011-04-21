@@ -101,3 +101,10 @@ Then /^there should only be one instance of the investigation "([^"]*)" in the f
   favorites = Favorite.find_all_by_favoritable_id_and_favoritable_type investigation, investigation.class.to_s
   favorites.count.should == 1
 end
+
+When /^I drag the favorite investigation "([^"]*)" to "([^"]*)"$/ do |investigation_name, to|
+  investigation = Investigation.find_by_name investigation_name
+  selector = find("#favorite_investigation_#{investigation.id}")
+  drop = find(to)
+  selector.drag_to(drop)
+end

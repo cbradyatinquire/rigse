@@ -64,5 +64,13 @@ Feature: Teacher has favorite runnables list
     Then I should see "Your Favorite Assignments"
     And I should see the investigation "Argle" in the favorite assignments listing
 
-  @wip
+  @javascript
   Scenario: Teacher assigns favorite runnable
+    Given the investigation "Argle" is a favorite for the teacher "teacher"
+    When I am on the class page for "My Class"
+    Then I should see "Your Favorite Assignments"
+    And I should see the investigation "Argle" in the favorite assignments listing
+    When I drag the favorite investigation "Argle" to "#clazz_offerings"
+    And I wait "2" seconds
+    Then the investigation named "Argle" should have "offerings_count" equal to "1"
+    And I should see the investigation "Argle" in the favorite assignments listing

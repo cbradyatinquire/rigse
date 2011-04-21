@@ -218,10 +218,17 @@ class Portal::ClazzesController < ApplicationController
   def add_offering
     @portal_clazz = Portal::Clazz.find(params[:id])
     dom_id = params[:dragged_dom_id]
+    if dom_id =~ /favorite/i
+      dom_id.gsub! "favorite_", ""
+    end
     container = params[:dropped_dom_id]
     runnable_id = params[:runnable_id]
     unless params[:runnable_type] == 'portal_offering'
-      runnable_type = params[:runnable_type].classify
+      if params[:runnable_type] =~ /favorite/i
+        runnable_type = params[:runnable_type].gsub("favorite_", "").classify
+      else
+        runnable_type = params[:runnable_type].classify
+      end
       @offering = Portal::Offering.find_or_create_by_clazz_id_and_runnable_type_and_runnable_id(@portal_clazz.id,runnable_type,runnable_id)
       if @offering
         if @portal_clazz.default_class == true
