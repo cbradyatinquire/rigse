@@ -42,7 +42,6 @@ Feature: Teacher has favorite runnables list
     And I should see the resource page "Newest" in the favorite assignments listing
     And I should see the external activity "My Activity" in the favorite assignments listing
 
-  @wip
   @javascript
   Scenario: Teacher removes runnable from favorites
     Given the investigation "Argle" is a favorite for the teacher "teacher"

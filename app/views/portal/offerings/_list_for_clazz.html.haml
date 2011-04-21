@@ -14,7 +14,7 @@
 
   -#= drop_receiving_element 'clazz_offerings', :hoverclass=> 'drop_target_selected', :accept => 'runnable', :url=> {:action=>'add_offering'}, :before => "element.hide();", :with => "{runnable_id: decode_model(element).id, runnable_type: decode_model(element).type, dragged_dom_id: element.id, dropped_dom_id: 'clazz_offerings'}"
   -#= drop_receiving_element 'offering_list',  :hoverclass=> 'drop_target_selected', :accept => 'offering', :url=> {:action=>'remove_offering'}, :before => "if(element.hasClassName('no-delete')) { alert(\"Cannot delete offering with student data. Please deactivate instead.\"); return false; } element.hide();", :with => "{offering_id: decode_model(element).id, dragged_dom_id: element.id, dropped_dom_id: 'offering_list'}"
-  = drop_receiving_element 'clazz_offerings', :hoverclass=> 'drop_target_selected', :accept => 'runnable', :url=> {:action=>'add_offering'},   :before => "element.hide();", :with => "{runnable_id: decode_model(element).id, runnable_type: decode_model(element).type, dragged_dom_id: element.id, dropped_dom_id: 'clazz_offerings'}"
+  = drop_receiving_element 'clazz_offerings', :hoverclass=> 'drop_target_selected', :accept => ['runnable', 'favorite'], :url=> {:action=>'add_offering'},   :before => "element.hide();", :with => "{runnable_id: decode_model(element).id, runnable_type: decode_model(element).type, dragged_dom_id: element.id, dropped_dom_id: 'clazz_offerings'}"
   = drop_receiving_element 'offering_list',  :hoverclass=> 'drop_target_selected', :accept => 'offering', :url=> {:action=>'remove_offering'}, :before => "element.hide();", :with => "{offering_id: decode_model(element).id, dragged_dom_id: element.id, dropped_dom_id: 'offering_list'}"
 - else
   - portal_clazz.offerings.each do |offering|

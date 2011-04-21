@@ -1,9 +1,15 @@
-Then /^the investigation "([^"]*)" should have a favorite link$/ do |inv_name|
+Given /^the investigation "([^"]*)" is a favorite for the teacher "([^"]*)"$/ do |inv_name, teacher_name|
   investigation = Investigation.find_by_name inv_name
-  elem = find("#investigation_#{investigation.id}")
-  elem.should have_selector("input.favorite_link") do |fav|
-    fav.should have_content "FAVORITE"
-  end
+  user = User.find_by_login teacher_name
+  teacher = user.portal_teacher
+  teacher.favorites.create :favoritable => investigation
+end
+
+When /^I click the remove favorite link for the investigation "([^"]*)"$/ do |inv_name|
+  investigation = Investigation.find_by_name inv_name
+  steps %Q{
+    When I press "REMOVE FAVORITE" within "#favorite_investigation_#{investigation.id}"
+  }
 end
 
 When /^I click the favorite link for the investigation "(.*)"$/ do |inv_name|
@@ -25,6 +31,14 @@ When /^I click the favorite link for the external activity "([^"]*)"$/ do |ea_na
   steps %Q{
     When I press "FAVORITE" within "#external_activity_#{eact.id}"
   }
+end
+
+Then /^the investigation "([^"]*)" should not be a favorite of the teacher "([^"]*)"$/ do |inv_name, teacher_name|
+  investigation = Investigation.find_by_name inv_name
+  user = User.find_by_login teacher_name
+  teacher = user.portal_teacher
+  favorite = Favorite.find_by_favoritable_id_and_favoritable_type investigation, investigation.class.to_s
+  teacher.favorites.should_not include favorite
 end
 
 Then /^the external activity "([^"]*)" should be a favorite of the teacher "([^"]*)"$/ do |ea_name, teacher_name|
@@ -70,4 +84,12 @@ Then /^I should see the external activity "([^"]*)" in the favorite assignments 
   steps %Q{
     Then I should see "#{ea_name}" within "#favorites_listing"
   }
+end
+
+Then /^the investigation "([^"]*)" should have a favorite link$/ do |inv_name|
+  investigation = Investigation.find_by_name inv_name
+  elem = find("#investigation_#{investigation.id}")
+  elem.should have_selector("input.favorite_link") do |fav|
+    fav.should have_content "FAVORITE"
+  end
 end

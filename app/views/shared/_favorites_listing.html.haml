@@ -14,7 +14,7 @@
 
 - runnables.each do |favorite|
   - runnable = favorite.favoritable
-  %div{ :id => dom_id_for(runnable), :class => 'runnable' }
+  %div{ :id => dom_id_for(runnable, "favorite"), :class => 'favorite' }
     - link_text = ""
     = accordion_for(runnable, (preview_button_for(runnable) + name_for_component(runnable, :hide_componenent_name => true) + link_text), runnable.class.to_s.downcase.to_sym) do
       %div.action_menu
@@ -36,5 +36,5 @@
           %i
             Used in: #{runnable.offerings.length} classes.
 
-  =draggable_element dom_id_for(runnable), :revert => true , :scroll => 'window'
+  =draggable_element dom_id_for(runnable, "favorite"), :revert => true , :scroll => 'window'
 
