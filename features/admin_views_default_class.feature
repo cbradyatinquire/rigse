@@ -9,5 +9,3 @@ Feature: Admin views default class
     When I login as an admin
     And go to the class page for "Default Class"
     Then I should see "Default Class"
-    
-
