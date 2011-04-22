@@ -2,4 +2,4 @@
 - locals[:hide_drafts_checkbox] = (!APP_CONFIG[:allow_drafts_in_assignments])
 
 #favorites_listing
-  = render :partial => "shared/favorites_listing", :locals => { :runnables => current_user.portal_teacher.favorites, :hide_print => true }
+  = render :partial => "shared/favorites_listing", :locals => { :runnables => current_user.portal_teacher.class_favorites(portal_clazz_id), :hide_print => true }

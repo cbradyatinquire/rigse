@@ -5,6 +5,13 @@ Given /^the investigation "([^"]*)" is a favorite for the teacher "([^"]*)"$/ do
   teacher.favorites.create :favoritable => investigation
 end
 
+Given /^the resource page "([^"]*)" is a favorite for the teacher "([^"]*)"$/ do |rp_name, teacher_name|
+  rpage = ResourcePage.find_by_name rp_name
+  user = User.find_by_login teacher_name
+  teacher = user.portal_teacher
+  teacher.favorites.create :favoritable => rpage
+end
+
 When /^I click the remove favorite link for the investigation "([^"]*)"$/ do |inv_name|
   investigation = Investigation.find_by_name inv_name
   steps %Q{
@@ -107,4 +114,10 @@ When /^I drag the favorite investigation "([^"]*)" to "([^"]*)"$/ do |investigat
   selector = find("#favorite_investigation_#{investigation.id}")
   drop = find(to)
   selector.drag_to(drop)
+end
+
+Then /^I should not see the resource page "([^"]*)" in the favorite assignments listing$/ do |rp_name|
+  steps %Q{
+    Then I should not see "#{rp_name}" within "#favorites_listing"
+  }
 end

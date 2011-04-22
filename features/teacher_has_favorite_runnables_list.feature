@@ -10,8 +10,9 @@ Feature: Teacher has favorite runnables list
       | login   | password |
       | teacher | teacher  |
     And the following classes exist:
-      | name     | teacher |
-      | My Class | teacher |
+      | name           | teacher |
+      | My Class       | teacher |
+      | My Other Class | teacher |
     And the following investigations exist:
       | name   | user    | publication_status |
       | Argle  | teacher | published          |
@@ -74,3 +75,12 @@ Feature: Teacher has favorite runnables list
     And I wait "2" seconds
     Then the investigation named "Argle" should have "offerings_count" equal to "1"
     And I should see the investigation "Argle" in the favorite assignments listing
+
+  @javascript
+  Scenario: Can not assign duplicate runnables
+    Given the resource page "Newest" is a favorite for the teacher "teacher"
+    When I assign the resource page "Newest" to the class "My Class"
+    And I am on the class page for "My Class"
+    Then I should not see the resource page "Newest" in the favorite assignments listing
+    When I am on the class page for "My Other Class"
+    Then I should see the resource page "Newest" in the favorite assignments listing

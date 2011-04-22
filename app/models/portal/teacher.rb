@@ -39,6 +39,16 @@ class Portal::Teacher < ActiveRecord::Base
   # it could cause problems, so it's disabled until we discuss it further. -- Cantina-CMH 6/9/10
   #validates_presence_of :schools, :message => "association cannot be empty"
 
+  def class_favorites(clazz_id)
+    clazz = Portal::Clazz.find clazz_id
+    clazz_offerings = clazz.offerings
+    favs = favorites
+    clazz_offerings.each do |offering|
+      favs.reject! {|f| f.favoritable == offering.runnable}
+    end
+    favs
+  end
+
   def name
     user ? user.name : 'unnamed teacher'
   end
