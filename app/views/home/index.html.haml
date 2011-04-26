@@ -1,11 +1,12 @@
 - current_user.roles.each do |role|
   = render :partial => role.title
 
-- if @portal_teacher
-  = render :partial => "teacher"
-  
 - if @portal_student
   = render :partial => "student"
+
+- if @portal_teacher
+  = render :partial => "teacher"
+  = render :partial => "shared/favorites_listing", :locals => {:runnables => @portal_teacher.favorites}
 
 = yield :authored_investigations
 

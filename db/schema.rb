@@ -551,6 +551,17 @@ ActiveRecord::Schema.define(:version => 20110420140632) do
     t.datetime "updated_at"
   end
 
+  create_table "embeddable_web_models", :force => true do |t|
+    t.integer  "user_id"
+    t.integer  "web_model_id"
+    t.string   "uuid",         :limit => 36
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  add_index "embeddable_web_models", ["user_id"], :name => "index_embeddable_web_models_on_user_id"
+  add_index "embeddable_web_models", ["web_model_id"], :name => "index_embeddable_web_models_on_web_model_id"
+
   create_table "embeddable_xhtmls", :force => true do |t|
     t.integer  "user_id"
     t.string   "uuid",        :limit => 36
@@ -570,8 +581,9 @@ ActiveRecord::Schema.define(:version => 20110420140632) do
     t.string   "publication_status"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.integer  "offerings_count",    :default => 0
+    t.integer  "offerings_count",          :default => 0
     t.string   "save_path"
+    t.boolean  "append_learner_id_to_url"
   end
 
   add_index "external_activities", ["save_path"], :name => "index_external_activities_on_save_path"
@@ -733,6 +745,15 @@ ActiveRecord::Schema.define(:version => 20110420140632) do
     t.integer "native_library_id"
     t.integer "versioned_jnlp_id"
   end
+
+  create_table "notifications_assessment_import_infos", :force => true do |t|
+    t.string   "database"
+    t.integer  "last_seq"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  add_index "notifications_assessment_import_infos", ["database"], :name => "index_notifications_assessment_import_infos_on_database"
 
   create_table "otml_categories_otrunk_imports", :id => false, :force => true do |t|
     t.integer "otml_category_id"
@@ -2113,5 +2134,21 @@ ActiveRecord::Schema.define(:version => 20110420140632) do
   end
 
   add_index "users", ["login"], :name => "index_users_on_login", :unique => true
+
+  create_table "web_models", :force => true do |t|
+    t.integer  "user_id"
+    t.string   "name"
+    t.text     "description"
+    t.string   "url"
+    t.string   "image_url"
+    t.string   "publication_status"
+    t.string   "uuid",               :limit => 36
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  add_index "web_models", ["name"], :name => "index_web_models_on_name"
+  add_index "web_models", ["publication_status"], :name => "index_web_models_on_publication_status"
+  add_index "web_models", ["user_id"], :name => "index_web_models_on_user_id"
 
 end
