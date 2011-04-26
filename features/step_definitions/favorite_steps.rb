@@ -12,6 +12,12 @@ Given /^the resource page "([^"]*)" is a favorite for the teacher "([^"]*)"$/ do
   teacher.favorites.create :favoritable => rpage
 end
 
+Given /^teacher favorites are enabled$/ do
+  project = Admin::Project.default_project
+  project.enable_teacher_favorites = true
+  project.save
+end
+
 When /^I click the remove favorite link for the investigation "([^"]*)"$/ do |inv_name|
   investigation = Investigation.find_by_name inv_name
   steps %Q{

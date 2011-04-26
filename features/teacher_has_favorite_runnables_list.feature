@@ -24,6 +24,7 @@ Feature: Teacher has favorite runnables list
     And the following external activity exists:
       | name        | user    | url   |
       | My Activity | teacher | /home |
+    And teacher favorites are enabled
     And I login with username: teacher password: teacher
 
   @javascript
