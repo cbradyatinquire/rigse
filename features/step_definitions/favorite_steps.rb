@@ -101,6 +101,12 @@ Then /^the investigation "([^"]*)" should have a favorite link$/ do |inv_name|
   end
 end
 
+Then /^the investigation "([^"]*)" should not have a favorite link$/ do |inv_name|
+  investigation = Investigation.find_by_name inv_name
+  elem = find("#investigation_#{investigation.id}")
+  elem.should_not have_selector("input.favorite_link")
+end
+
 Then /^there should only be one instance of the investigation "([^"]*)" in the favorites of the teacher "([^"]*)"$/ do |inv_name, teacher_name|
   investigation = Investigation.find_by_name inv_name
   user = User.find_by_login teacher_name

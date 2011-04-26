@@ -6,7 +6,8 @@
 
 - if @portal_teacher
   = render :partial => "teacher"
-  = render :partial => "shared/favorites_listing", :locals => {:runnables => @portal_teacher.favorites}
+  - if Admin::Project.default_project.enable_teacher_favorites?
+    = render :partial => "shared/favorites_listing", :locals => {:runnables => @portal_teacher.favorites}
 
 = yield :authored_investigations
 

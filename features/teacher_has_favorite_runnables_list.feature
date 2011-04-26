@@ -99,8 +99,22 @@ Feature: Teacher has favorite runnables list
     When I check "Enable Teacher Favorites"
     And I press "Save"
     Then I should see "Teacher Favorites: enabled"
-    When I follow "edit project"
+    When I login with username: teacher password: teacher
+    And I am on the class page for "My Class"
+    Then I should see "Your Favorite Assignments"
+    And the investigation "Argle" should have a favorite link
+    When I am on the home page
+    Then I should see "Your Favorite Assignments"
+    When I login with username: admin_login password: admin_password
+    And I am on the admin projects page
+    And I follow "edit project"
     Then I should see "Enable Teacher Favorites"
     When I uncheck "Enable Teacher Favorites"
     And I press "Save"
     Then I should see "Teacher Favorites: disabled"
+    When I login with username: teacher password: teacher
+    And I am on the class page for "My Class"
+    Then I should not see "Your Favorite Assignments"
+    And the investigation "Argle" should not have a favorite link
+    When I am on the home page
+    Then I should not see "Your Favorite Assignments"

@@ -14,7 +14,7 @@
 - runnables.each do |runnable|
   %div{ :id => dom_id_for(runnable), :class => 'runnable' }
     - link_text = ""
-    - unless current_user.portal_teacher.blank?
+    - unless current_user.portal_teacher.blank? || !Admin::Project.default_project.enable_teacher_favorites?
       - link_text = button_to "FAVORITE", {:controller => :favorites, :action => :create, :runnable => runnable, :type => runnable.class, :teacher => current_user.portal_teacher}, :class => "favorite_link"
     = accordion_for(runnable, (preview_button_for(runnable) + name_for_component(runnable, :hide_componenent_name => true) + link_text), runnable.class.to_s.downcase.to_sym) do
       %div.action_menu
