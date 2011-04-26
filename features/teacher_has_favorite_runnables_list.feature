@@ -84,3 +84,23 @@ Feature: Teacher has favorite runnables list
     Then I should not see the resource page "Newest" in the favorite assignments listing
     When I am on the class page for "My Other Class"
     Then I should see the resource page "Newest" in the favorite assignments listing
+
+  @javascript
+  Scenario: Favorites feature can be enabled via setting
+    Given the following users exist:
+      | login       | password       | roles                 |
+      | admin_login | admin_password | admin, member, author |
+    And I login with username: admin_login password: admin_password
+    And I am on the admin projects page
+    Then I should see "RITES Investigations"
+    And I should see "Default Class: disabled"
+    When I follow "edit project"
+    Then I should see "Enable Teacher Favorites"
+    When I check "Enable Teacher Favorites"
+    And I press "Save"
+    Then I should see "Teacher Favorites: enabled"
+    When I follow "edit project"
+    Then I should see "Enable Teacher Favorites"
+    When I uncheck "Enable Teacher Favorites"
+    And I press "Save"
+    Then I should see "Teacher Favorites: disabled"

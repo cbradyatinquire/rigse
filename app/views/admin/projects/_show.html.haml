@@ -12,7 +12,7 @@
           %p
             %ul.menu_v
               %li
-                Url: 
+                Url:
                 = h(admin_project.url)
               %li
                 Default Users:
@@ -38,7 +38,15 @@
                   - else
                     disabled.
                 (This option will allow students to register without a class word.)
-            
+              %li
+                Teacher Favorites:
+                %b
+                  - if admin_project.enable_teacher_favorites
+                    enabled.
+                  - else
+                    disabled.
+                (This option will allow teachers to maintain a list of favorite assignments.)
+
           - field_set_tag 'Maven Jnlp' do
             %p
               Maven Jnlp Server:

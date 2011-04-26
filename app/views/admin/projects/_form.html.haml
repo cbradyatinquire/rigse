@@ -31,7 +31,13 @@
             = f.label :allow_default_class, "Enable Default Class:", :style => "display:inline;"
             = f.check_box :allow_default_class
             %br
-            (This option will allow students to reset their own passwords.)
+            (This option will allow students to register without a class word.)
+          %li
+            %b
+            = f.label :enable_teacher_favorites, "Enable Teacher Favorites", :style => "display:inline;"
+            = f.check_box :enable_teacher_favorites
+            %br
+            (This option will allow teachers to maintain a list of favorite assignments.)
 
       - field_set_tag '<b>Maven Jnlp</b>', { :id => dom_id_for(admin_project, :maven_jnlp) } do
         = render :partial => 'maven_jnlp_form', :locals => { :admin_project => admin_project }
