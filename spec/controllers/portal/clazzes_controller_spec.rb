@@ -74,6 +74,9 @@ describe Portal::ClazzesController do
     end
 
     it "shows the full class summary, with edit button if current user is authorized" do
+      @mock_project = mock_model(Admin::Project, :name => "Test Project")
+      @mock_project.stub(:enable_teacher_favorites?).and_return(false)
+      Admin::Project.stub(:default_project).and_return(@mock_project)
       [:admin_user, :authorized_teacher_user].each do |user|
         setup_for_repeated_tests
         stub_current_user user
