@@ -14,7 +14,7 @@ describe Dataservice::BundleLoggersController do
 
   describe "GET index" do
     it "assigns all dataservice_bundle_loggers as @dataservice_bundle_loggers" do
-      Dataservice::BundleLogger.should_receive(:find).with(:all, hash_including(will_paginate_params(:limit=>5))).and_return([mock_bundle_logger])
+      Dataservice::BundleLogger.should_receive(:search).with(nil, nil, nil).and_return([mock_bundle_logger])
       login_admin
       get :index
       assigns[:dataservice_bundle_loggers].should == [mock_bundle_logger]
@@ -23,7 +23,9 @@ describe Dataservice::BundleLoggersController do
 
   describe "GET show" do
     it "assigns the requested bundle_logger as @dataservice_bundle_logger" do
-      Dataservice::BundleLogger.should_receive(:find).with("37").and_return(mock_bundle_logger)
+      logger = mock_bundle_logger
+      Dataservice::BundleLogger.should_receive(:find).with("37").and_return(logger)
+      logger.should_receive(:in_progress_bundle).twice.and_return(mock_bundle_content)
       login_admin
       get :show, :id => "37"
       assigns[:dataservice_bundle_logger].should equal(mock_bundle_logger)

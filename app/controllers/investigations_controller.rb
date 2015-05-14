@@ -7,8 +7,8 @@ class InvestigationsController < AuthoringController
   # cache_sweeper :investigation_sweeper, :only => [ :update ]
 
   include RestrictedController
+  include ControllerParamUtils
   #access_rule 'researcher', :only => [:usage_report, :details_report]
-  prawnto :prawn=>{ :page_layout=>:landscape }
 
   before_filter :setup_object, :except => [:index,:list_filter,:preview_index]
   before_filter :render_scope, :only => [:show]
@@ -31,7 +31,7 @@ class InvestigationsController < AuthoringController
   end
 
   def can_create
-    if (current_user.anonymous?)
+    if (current_visitor.anonymous?)
       flash[:error] = "Anonymous users can not create investigaitons"
       redirect_back_or investigations_path
     end
@@ -43,8 +43,8 @@ class InvestigationsController < AuthoringController
 
   def can_edit
     if defined? @investigation
-      unless @investigation.changeable?(current_user)
-        error_message = "you (#{current_user.login}) can not #{action_name.humanize} #{@investigation.name}"
+      unless @investigation.changeable?(current_visitor)
+        error_message = "you (#{current_visitor.login}) can not #{action_name.humanize} #{@investigation.name}"
         flash[:error] = error_message
         if request.xhr?
           render :text => "<div class='flash_error'>#{error_message}</div>"
@@ -57,7 +57,7 @@ class InvestigationsController < AuthoringController
 
   def setup_object
     if params[:id]
-      if params[:id].length == 36
+      if valid_uuid(params[:id])
         @investigation = Investigation.find(:first, :conditions => ['uuid=?',params[:id]])
       else
         @investigation = Investigation.find(params[:id])
@@ -82,82 +82,33 @@ class InvestigationsController < AuthoringController
     end
   end
 
+  def default_search
+    search_params = {
+      :material_types     => [Search::InvestigationMaterial],
+      :investigation_page => params[:page],
+      :per_page           => 30,
+      :user_id            => current_visitor.id,
+      :grade_span         => params[:grade_span],
+      :private            => current_visitor.has_role?('admin'),
+      :search_term        => params[:name]
+    }
+
+    sort_order = param_find(:sort_order, (params[:method] == :get))
+    s = Search.new(search_params)
+    return s.results[Search::InvestigationMaterial]
+  end
+
   public
 
-  # POST /investigations/select_js
+
   def index
-    # @grade_span = param_find(:grade_span)
-    # @domain_id = param_find(:domain_id)
-    # @name = param_find(:name
-    # don't save these, see: http://www.pivotaltracker.com/story/show/2428013
-    @grade_span = params[:grade_span]
-    @domain_id = params[:domain_id]
-    @include_drafts = param_find(:include_drafts)
-    @name = param_find(:name)
-    pagination = params[:page] == "" ? 1 : params[:page]
-    if (params[:method] == :get)
-      @include_drafts = param_find(:include_drafts,true)
-      pagination = params[:page] = 1
-    else
-      @include_drafts = param_find(:include_drafts)
-    end
-
-    @sort_order = param_find(:sort_order, true)
-    if params[:include_usage_count].blank?
-      # The checkbox was unchecked. No other way to detect this as the param gets passed as nil
-      # unless it was actually checked as part of the request
-      session[:include_usage_count] = false if params[:method] == :get
-    else
-      session[:include_usage_count] = params[:include_usage_count]
-    end
-
-    search_options = {
-      :name => @name,
-      :portal_clazz_id => @portal_clazz_id,
-      :include_drafts => @include_drafts,
-      :grade_span => @grade_span,
-      :domain_id => @domain_id,
-      :sort_order => @sort_order,
-      :paginate => true,
-      :page => pagination
-    }
-    @investigations = Investigation.search_list(search_options)
-
-    if params[:mine_only]
-      @investigations = @investigations.reject { |i| i.user.id != current_user.id }
-    end
-
-    @paginated_objects = @investigations
-
-    if request.xhr?
-      @resource_pages = ResourcePage.search_list(search_options) unless params[:investigations_only]
-      render :partial => 'investigations/runnable_list_with_resource_pages', :locals => {
-        :investigations => @investigations,
-        :resource_pages => @resource_pages
-      }
-    else
-      respond_to do |format|
-        format.html do
-          render 'index'
-        end
-        format.js
-      end
-    end
+    redirect_to search_url(material_types: Search::InvestigationMaterial)
   end
 
   def printable_index
-    @investigations = Investigation.search_list({
-      :name => param_find(:name),
-      :portal_clazz_id => @portal_clazz_id,
-      :include_drafts => param_find(:include_drafts, true),
-      :grade_span => param_find(:grade_span),
-      :domain_id => param_find(:domain_id),
-      :sort_order => param_find(:sort_order),
-      :paginate => false
-    })
-
+    @investigations = default_search
     if params[:mine_only]
-      @investigations = @investigations.reject { |i| i.user.id != current_user.id }
+      @investigations = @investigations.reject { |i| i.user.id != current_visitor.id }
     end
 
     render :layout => false
@@ -179,8 +130,9 @@ class InvestigationsController < AuthoringController
   # GET /investigations/1.otml
   def show
     # display for teachers? Later we can determin via roles?
-    @teacher_mode = params[:teacher_mode]
+    @teacher_mode = boolean_param(:teacher_mode)
     respond_to do |format|
+      format.run_html   { render :show, :layout => "layouts/run" }
       format.html {
         if params['print']
           render :print, :layout => "layouts/print"
@@ -188,17 +140,21 @@ class InvestigationsController < AuthoringController
       }
 
       format.jnlp   {
-        if params.delete(:use_installer)
-          wrapped_jnlp_url = polymorphic_url(@investigation, :format => :jnlp, :params => params)
-          render :partial => 'shared/show_installer', :locals =>
-            { :runnable => @investigation, :teacher_mode => @teacher_mode , :wrapped_jnlp_url => wrapped_jnlp_url }
-        else
-          render :partial => 'shared/show', :locals => { :runnable => @investigation, :teacher_mode => @teacher_mode }
-        end
+        render :partial => 'shared/installer', :locals => { :runnable => @investigation, :teacher_mode => @teacher_mode }
       }
 
       format.config { render :partial => 'shared/show', :locals => { :runnable => @investigation, :teacher_mode => @teacher_mode, :session_id => (params[:session] || request.env["rack.session.options"][:id]) } }
-      format.dynamic_otml { render :partial => 'shared/show', :locals => {:runnable => @investigation, :teacher_mode => @teacher_mode} }
+      format.dynamic_otml {
+        learner = (params[:learner_id] ? Portal::Learner.find(params[:learner_id]) : nil)
+        if learner && learner.bundle_logger.in_progress_bundle
+          launch_event = Dataservice::LaunchProcessEvent.create(
+            :event_type => Dataservice::LaunchProcessEvent::TYPES[:activity_otml_requested],
+            :event_details => "Activity content loaded. Activity should now be running...",
+            :bundle_content => learner.bundle_logger.in_progress_bundle
+          )
+        end
+        render :partial => 'shared/show', :locals => {:runnable => @investigation, :teacher_mode => @teacher_mode}
+      }
       format.otml   { render :layout => 'layouts/investigation' } # investigation.otml.haml
       format.xml    { render :xml => @investigation }
       format.pdf    { render :layout => false }
@@ -222,7 +178,7 @@ class InvestigationsController < AuthoringController
   # GET /pages/new.xml
   def new
     @investigation = Investigation.new
-    @investigation.user = current_user
+    @investigation.user = current_visitor
     if APP_CONFIG[:use_gse]
       @gse = RiGse::GradeSpanExpectation.default
       @investigation.grade_span_expectation = @gse
@@ -275,7 +231,18 @@ class InvestigationsController < AuthoringController
       logger.error('could not find gse')
     end
     @investigation = Investigation.new(params[:investigation])
-    @investigation.user = current_user
+    @investigation.user = current_visitor
+
+    if params[:update_grade_levels]
+      # set the grade_level tags
+      @investigation.grade_level_list = (params[:grade_levels] || [])     
+    end
+
+    if params[:update_subject_areas]
+      # set the subject_area tags
+      @investigation.subject_area_list = (params[:subject_areas] || [])
+    end
+
     respond_to do |format|
       if @investigation.save
         flash[:notice] = "#{Investigation.display_name} was successfully created."
@@ -328,6 +295,18 @@ class InvestigationsController < AuthoringController
   def update
     @investigation = Investigation.find(params[:id])
     update_gse
+
+    if params[:update_grade_levels]
+      # set the grade_level tags
+      @investigation.grade_level_list = (params[:grade_levels] || [])     
+    end
+
+    if params[:update_subject_areas]
+      # set the subject_area tags
+      @investigation.subject_area_list = (params[:subject_areas] || [])
+      @investigation.save
+    end
+
     if request.xhr?
       if cancel || @investigation.update_attributes(params[:investigation])
         render :partial => 'shared/investigation_header', :locals => { :investigation => @investigation }
@@ -352,7 +331,7 @@ class InvestigationsController < AuthoringController
   # DELETE /pages/1.xml
   def destroy
     @investigation = Investigation.find(params[:id])
-    if @investigation.changeable?(current_user)
+    if @investigation.changeable?(current_visitor)
       if @investigation.offerings && @investigation.offerings.size > 0
         flash[:error] = "This #{Investigation.display_name} can't be destoyed, its in use by classes..."
         @failed = true
@@ -372,7 +351,7 @@ class InvestigationsController < AuthoringController
   ##
   def add_activity
     @activity = Activity.new
-    @activity.user = current_user
+    @activity.user = current_visitor
     @activity.investigation = @investigation
     @activity.save
     redirect_to edit_activity_path @activity
@@ -405,7 +384,7 @@ class InvestigationsController < AuthoringController
   ##
   def duplicate
     @original = Investigation.find(params['id'])
-    @investigation = @original.duplicate(current_user)
+    @investigation = @original.duplicate(current_visitor)
     @investigation.save
     flash[:notice] ="Copied #{@original.name}"
     redirect_to url_for(@investigation)
@@ -432,15 +411,15 @@ class InvestigationsController < AuthoringController
   # see: views/investigations/_paste_link
   #
   def paste
-    if @investigation.changeable?(current_user)
+    if @investigation.changeable?(current_visitor)
       @original = clipboard_object(params)
       if (@original)
-        @component = @original.deep_clone :no_duplicates => true, :never_clone => [:uuid, :updated_at,:created_at], :include => {:sections => {:pages => {:page_elements => :embeddable}}}
+        @component = @original.deep_clone :no_duplicates => true, :never_clone => [:uuid, :updated_at,:created_at], :include => {:sections => :pages}
         if (@component)
           # @component.original = @original
           @container = params[:container] || 'investigation_activities_list'
           @component.name = "copy of #{@component.name}"
-          @component.deep_set_user current_user
+          @component.deep_set_user current_visitor
           @component.investigation = @investigation
           @component.save
         end
@@ -472,7 +451,7 @@ class InvestigationsController < AuthoringController
   def get_report(type)
     sio = StringIO.new
     opts = {:verbose => false}
-    opts[:investigations] = [@investigation] unless @investigation.id.nil?
+    opts[:runnables] = [@investigation] unless @investigation.id.nil?
     opts[:blobs_url] = dataservice_blobs_url
     rep = nil
     case type

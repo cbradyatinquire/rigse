@@ -4,7 +4,7 @@ class PasswordsController < ApplicationController
   end
   
   def login
-    @user = User.new
+    @user_login = User.new
   end
 
   def create_by_email
@@ -12,7 +12,7 @@ class PasswordsController < ApplicationController
     @password.user = User.find_by_email(@password.email)
     
     if @password.save
-      PasswordMailer.deliver_forgot_password(@password)
+      PasswordMailer.forgot_password(@password).deliver
       flash[:notice] = "A link to change your password has been sent to #{@password.email}."
       redirect_to :action => :email
     else
@@ -41,7 +41,7 @@ class PasswordsController < ApplicationController
     elsif user.email
       @password = Password.new(:user => user, :email => user.email)
       if @password.save
-        PasswordMailer.deliver_forgot_password(@password)
+        PasswordMailer.forgot_password(@password).deliver
         flash[:notice] = "A link to change your password has been sent to #{@password.email}."
         redirect_to root_path
         return
@@ -50,27 +50,27 @@ class PasswordsController < ApplicationController
       end
     end
     
-    @user = User.new
+    @user_login = User.new
     @password = Password.new unless @password
     render :action => :login
   end
   
   def questions
-    @user = User.find(params[:user_id])
+    @user_recovery = User.find(params[:user_id])
   end
   
   def check_questions
-    @user = User.find(params[:user_id])
+    @user_check_questions = User.find(params[:user_id])
     questions = params[:security_questions]
     
     ok = 0
     questions.each do |k, v|
-      ok += 1 if @user.security_questions.find(v[:id]).answer.downcase == v[:answer].to_s.downcase
+      ok += 1 if @user_check_questions.security_questions.find(v[:id]).answer.downcase == v[:answer].to_s.downcase
     end
     
     if ok == 3
       # success!
-      @password = Password.new(:user => @user, :email => @user.email)
+      @password = Password.new(:user => @user_check_questions, :email => @user_check_questions.email)
       if @password.save
         redirect_to change_password_path(@password.reset_code)
         return
@@ -79,30 +79,35 @@ class PasswordsController < ApplicationController
     
     # TODO: limit the number of wrong attempts for a single user
     flash[:error] = "Sorry, you did not answer all of your questions correctly."
-    redirect_to password_questions_path(@user.id)
+    redirect_to password_questions_path(@user_check_questions.id)
   end
 
   def reset
-    begin
-      @user = Password.find(:first, :conditions => ['reset_code = ? and expiration_date > ?', params[:reset_code], Time.now]).user
-    rescue
-      flash[:notice] = 'The change password URL you visited is either invalid or expired.'
-      redirect_to new_password_path
-    end    
+    @user_reset_password = find_password_user
   end
 
-  def update_after_forgetting
-    @user = Password.find_by_reset_code(params[:reset_code]).user
-    @user.password = params[:user][:password]
-    @user.password_confirmation = params[:user][:password_confirmation]
-    @user.updating_password = true
-    @user.save
-    if @user.errors.empty?
-      flash[:notice] = "Password for #{@user.login} was successfully updated."
-      redirect_to login_path
+  def update_users_password
+    @user_reset_password = find_password_user
+    @user_reset_password.password = params[:user_reset_password][:password]
+    @user_reset_password.password_confirmation = params[:user_reset_password][:password_confirmation]
+    @user_reset_password.updating_password = true
+    @user_reset_password.save
+    
+    if @user_reset_password.errors.empty?
+      flash[:notice] = "Password for #{@user_reset_password.login} was successfully updated."
+      @user_reset_password.require_password_reset=false
+      @user_reset_password.save
+      if @user_reset_password.id == current_visitor.id
+        # force the user to login again
+        logout_keeping_session!
+        redirect_to login_path
+      else
+        redirect_to(session[:return_to] || root_path)
+      end
     else
-      flash[:error] = 'Password could not be updated'
-      redirect_to :action => :reset, :reset_code => params[:reset_code], :user_errors => @user.errors.full_messages
+      # flash[:error] = 'Password could not be updated'
+      # redirect_to :action => :reset, :reset_code => params[:reset_code], :user_errors => @user.errors
+      render 'reset'
     end
   end
   
@@ -115,4 +120,18 @@ class PasswordsController < ApplicationController
       render :action => :edit
     end
   end
+
+  protected 
+  
+  def find_password_user
+    return current_visitor if params[:reset_code] == "0" && !current_visitor.anonymous?
+    begin
+      @user_find = Password.find(:first, :conditions => ['reset_code = ? and expiration_date > ?', params[:reset_code], Time.now]).user
+      return @user_find
+    rescue
+      flash[:notice] = 'The change password URL you visited is either invalid or expired.'
+      redirect_to home_path
+    end
+  end
+
 end

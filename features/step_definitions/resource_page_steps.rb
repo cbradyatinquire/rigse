@@ -1,4 +1,4 @@
-Given /^the following resource pages exist:$/ do |table|
+Given /^the following resource page[s]? exist[s]?:$/ do |table|
   table.hashes.each do |hash|
     user_name = hash.delete('user')
     user = User.first(:conditions => { :login => user_name })
@@ -12,7 +12,7 @@ end
 
 Given /^the resource page "([^"]*)" has an attachment named "([^"]*)"$/ do |resource_name, attachment_name|
   resource = ResourcePage.find_by_name resource_name
-  resource.new_attached_files = {'name' => attachment_name, 'attachment' => File.new(RAILS_ROOT + '/spec/fixtures/images/rails.png')}
+  resource.new_attached_files = {'name' => attachment_name, 'attachment' => File.new(::Rails.root.to_s + '/spec/fixtures/images/rails.png')}
   resource.save
 end
 
@@ -53,7 +53,10 @@ end
 When /^I open the accordion for the resource "([^"]*)"$/ do |resource_name|
   resource = ResourcePage.find_by_name resource_name
   selector = "#resource_page_toggle_resource_page_#{resource.id}"
-  find(selector).click
+  # need to check if the accordion is already open so we don't close it
+  if(!find("#resource_page_content_resource_page_#{resource.id}").visible?)
+    find(selector).click
+  end
 end
 
 When /^I follow "([^"]*)" for the resource page "([^"]*)"$/ do |link_name, resource_page_name|
@@ -77,3 +80,12 @@ Then /^"([^"]*)" should have href like "([^"]*)" with params "([^"]*)"$/ do |lin
   a = page.find("a##{link}")
   a[:href].should =~ /#{href}.*#{params}/i
 end
+
+When /^show usage count is enabled on the session$/ do
+  pending # express the regexp above with the code you wish you had
+end
+
+Then /^I should see the "([^"]*)" resource page$/ do | page_name |
+  page.should have_selector("h1:contains('#{page_name}')")
+end
+

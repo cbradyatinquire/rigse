@@ -34,7 +34,7 @@ module Clipboard
         obj_array = clazz.find(:all, :conditions => {:id => clipboard_data_id})
         results = obj_array.empty? ? nil : obj_array.first
       rescue NameError
-        error_message = "unkown object in clipboard %s (id:%d)" % [clipboard_data_type,id]
+        error_message = "unknown object in clipboard #{clipboard_data_type} (id:#{clipboard_data_id})"
         logger.warn(error_message)
         flash[:warn]=error_message
       end
@@ -70,7 +70,7 @@ module Clipboard
     clipboard_data_id    = options[:clipboard_data_id]   || cookies[:clipboard_data_id]
     container_id         = options[:container_id] || params[:container_id]
     
-    return "<span class='copy_paste_disabled'>paste (nothing in clipboard)</span>" unless clipboard_data_type
+    return "<span class='copy_paste_disabled'>paste (nothing in clipboard)</span>".html_safe unless clipboard_data_type
     name = clipboard_object_name
     if acceptable_types.include?(clipboard_data_type) 
       url = url_for(
@@ -84,7 +84,7 @@ module Clipboard
         :title => "paste #{name}") + link_to_remote("paste #{name}", 
         :url=>url)
     end
-    return "<span class='copy_paste_disabled'>cant paste #{clipboard_data_type} #{name} here</span>"
+    return "<span class='copy_paste_disabled'>can't paste #{clipboard_data_type} #{name} here</span>".html_safe
   end
   
 end

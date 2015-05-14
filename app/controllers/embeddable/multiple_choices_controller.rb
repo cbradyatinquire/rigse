@@ -20,20 +20,11 @@ class Embeddable::MultipleChoicesController < ApplicationController
       respond_to do |format|
         format.html # show.html.erb
         format.otml { render :layout => "layouts/embeddable/multiple_choice" } # multiple_choice.otml.haml
-        format.jnlp { render :partial => 'shared/show', :locals => { :runnable => @multiple_choice , :teacher_mode => false } }
-        format.config { render :partial => 'shared/show', :locals => { :runnable => @multiple_choice, :session_id => (params[:session] || request.env["rack.session.options"][:id]) , :teacher_mode => false } }
-        format.dynamic_otml { render :partial => 'shared/show', :locals => {:runnable => @multiple_choice, :teacher_mode => @teacher_mode} }
+        format.jnlp { render :partial => 'shared/installer', :locals => { :runnable => @multiple_choice  } }
+        format.config { render :partial => 'shared/show', :locals => { :runnable => @multiple_choice, :session_id => (params[:session] || request.env["rack.session.options"][:id])  } }
+        format.dynamic_otml { render :partial => 'shared/show', :locals => {:runnable => @multiple_choice} }
         format.xml  { render :xml => @multiple_choice }
       end
-    end
-  end
-
-  # GET /Embeddable/multiple_choices/1/print
-  def print
-    @multiple_choice = Embeddable::MultipleChoice.find(params[:id])
-    respond_to do |format|
-      format.html { render :layout => "layouts/embeddable/print" }
-      format.xml  { render :xml => @multiple_choice }
     end
   end
 
@@ -68,6 +59,7 @@ class Embeddable::MultipleChoicesController < ApplicationController
       if cancel 
         redirect_to :index
       elsif @multiple_choice.save
+        @multiple_choice.create_default_choices
         render :partial => 'new', :locals => { :multiple_choice => @multiple_choice }
       else
         render :xml => @multiple_choice.errors, :status => :unprocessable_entity
@@ -75,6 +67,7 @@ class Embeddable::MultipleChoicesController < ApplicationController
     else
       respond_to do |format|
         if @multiple_choice.save
+          @multiple_choice.create_default_choices
           flash[:notice] = 'Multiplechoice was successfully created.'
           format.html { redirect_to(@multiple_choice) }
           format.xml  { render :xml => @multiple_choice, :status => :created, :location => @multiple_choice }

@@ -1,5 +1,5 @@
 class Embeddable::Xhtml < ActiveRecord::Base
-  set_table_name "embeddable_xhtmls"
+  self.table_name = "embeddable_xhtmls"
 
   belongs_to :user
   has_many :page_elements, :as => :embeddable
@@ -31,9 +31,6 @@ class Embeddable::Xhtml < ActiveRecord::Base
 
   send_update_events_to :investigations
   
-  def self.display_name
-    "Text"
-  end
   
   def investigations
     invs = []

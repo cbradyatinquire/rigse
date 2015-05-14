@@ -2,7 +2,7 @@ FAKE_BLOBS_URL = "http://nowhere.com/dataservice/blobs"
 def modified_report_for(investigation)
   report  = Reports::Detail.new(
     :verbose        => false,
-    :investigations => [investigation],
+    :runnables      => [investigation],
     :blobs_url      => FAKE_BLOBS_URL
   )
   report.stub!(:learner_id).and_return('learner_id')
@@ -22,29 +22,6 @@ def learner_for(student_name,offering)
   learner   = offering.find_or_create_learner(student)
 end
 
-def filename_for_recorded(thing,name)
-  thing_name  = thing.class.name.underscore.gsub("::","__").gsub("/","__")
-  thing_name << name.gsub(/\s+/,"_")
-  thing_name << ".yml"
-  return Rails.root.join('features','recorded_objects',thing_name)
-end
-
-def record_data_for(thing,name)
-  filename = filename_for_recorded(thing,name)
-  if File.exists?(filename)
-    puts "Recording for #{ thing.class.name } : #{name} exists. delete #{filename} to force new recording"
-  else
-    File.open(filename, "w") do |out|
-      YAML.dump(thing, out)
-    end
-  end
-end
-
-def recorded_data_for(thing,name)
-  serialized = nil
-  File.open(filename_for_recorded(thing,name)) {|f| serialized = f.read}
-  serialized
-end
 
 def add_response(learner,prompt_text,answer_text)
   prompts = {}
@@ -73,11 +50,12 @@ def add_multichoice_answer(learner,question,answer_text)
     :multiple_choice => question
   ) 
   saveable_answer = Saveable::MultipleChoiceAnswer.create(
-    #:bundle_contents => learner.bundle_contents,
-    #:bundle_logger   => learner.bundle_logger,
-    :choice          => answer
+    :multiple_choice => new_answer
   )
-  new_answer.answers << saveable_answer
+  Saveable::MultipleChoiceRationaleChoice.create(
+    :choice          => answer,
+    :answer          => saveable_answer
+  )
 end
 
 def add_openresponse_answer(learner,question,answer_text)
@@ -112,7 +90,7 @@ end
 
 def find_bloblinks_in_spreadheet(spreadsheet,num)
   structure = YAML::dump(spreadsheet)
-  regexp = /"@url": #{FAKE_BLOBS_URL}\/(\d+)\.blob/
+  regexp = /"@url": #{FAKE_BLOBS_URL}\/(\d+)\/[a-f0-9]+\.(blob|png)/
   lines = structure.lines.select{ |l| l =~ regexp}
   if num
     num = num.to_i
@@ -147,14 +125,14 @@ Then /^"([^"]*)" should have answered (\d+)% of the questions for "([^"]*)" in "
   offering = offering_for(investigation_name,class_name)
   learner = learner_for(student_name,offering)
   report = Report::Util.new(offering)
-  report.complete_percent(learner).should be_close(Float(percent), 1.5)
+  report.complete_percent(learner).should be_within(1.5).of(Float(percent))
 end
 
 Then /^"([^"]*)" should have (\d+)% of the questions correctly for "([^"]*)" in "([^"]*)"$/ do |student_name, percent, investigation_name,class_name|
   offering = offering_for(investigation_name,class_name)
   learner = learner_for(student_name,offering)
   report = Report::Util.new(offering)
-  report.correct_percent(learner).should be_close(Float(percent), 1.5)
+  report.correct_percent(learner).should be_within(1.5).of(Float(percent))
 end
 
 
@@ -162,14 +140,27 @@ end
 Given /^the following student answers:$/ do |answer_table|
   assignable_type = answer_table.column_names[2]
   assignable_class = assignable_type.gsub(/\s/, "_").classify.constantize
-  answer_table.hashes.each do |hash|
+  first_date = DateTime.now - answer_table.hashes.length
+  answer_table.hashes.each_with_index do |hash, index|
     student = User.find_by_login(hash['student']).portal_student
     clazz = Portal::Clazz.find_by_name(hash['class'])
     assignable = assignable_class.find_by_name(hash[assignable_type])
     offering = find_or_create_offering(assignable, clazz)
     learner = offering.find_or_create_learner(student)
     add_response(learner,hash['question_prompt'],hash['answer'])
+    report_learner = learner.report_learner
+    # need to make sure the last_run is sequencial inorder for some tests to work
+    report_learner.last_run = first_date + index
+    report_learner.update_fields
   end
+end
+
+Given /^the student "([^"]*)" has run the investigation "([^"]*)" in the class "([^"]*)"$/ do |student, investigation, clazz|
+  student = User.find_by_login(student).portal_student
+  clazz = Portal::Clazz.find_by_name(clazz)
+  investigation = Investigation.find_by_name(investigation)
+  offering = find_or_create_offering(investigation, clazz)
+  learner = offering.find_or_create_learner(student)
 end
 
 Given /^a recording of a report for "([^"]*)"$/ do |name|
@@ -177,7 +168,8 @@ Given /^a recording of a report for "([^"]*)"$/ do |name|
   buffer = StringIO.new
   spreadsheet = Spreadsheet::Workbook.new
   modified_report_for(investigation).run_report(buffer,spreadsheet)
-  record_data_for(spreadsheet,name)
+  recorded_sheet = RecordingComparison.new(spreadsheet,name)
+  recorded_sheet.record_data
 end
 
 Then /^the report [^"]* "([^"]*)" should match recorded data$/ do |investigation_name|
@@ -185,8 +177,8 @@ Then /^the report [^"]* "([^"]*)" should match recorded data$/ do |investigation
   buffer = StringIO.new
   spreadsheet = Spreadsheet::Workbook.new
   modified_report_for(investigation).run_report(buffer,spreadsheet)
-  recorded_data = recorded_data_for(spreadsheet,investigation_name)
-  recorded_data.should == YAML::dump(spreadsheet)
+  compared_sheet = RecordingComparison.new(spreadsheet,investigation_name)
+  compared_sheet.should_match_recorded
 end
 
 Then /^the report generated for "([^"]*)" should have \((\d+)\) links to blobs$/ do |investigation_name, num_blobs|
@@ -204,7 +196,7 @@ Then /^the usage report for "([^"]*)" should have \((\d+)\) answers for "([^"]*)
   #buffer = StringIO.new
   #spreadsheet = Spreadsheet::Workbook.new
   #investigation = Investigation.find_by_name(investigation_name)
-  #report  = Reports::Usage.new(:investigations => Investigation.all)
+  #report  = Reports::Usage.new(:runnables => Investigation.all)
   #report.run_report(buffer,spreadsheet)
   #assessments_completed_for(spreadsheet,student,investigation_name).strip.downcase.should == value.strip.downcase
 end
@@ -218,3 +210,28 @@ Then /^"([^"]*)" should have completed \((\d+)\) assessments for Activity "([^"]
   report.complete_number(learner,activity).should == num_answers.to_i
 end
 
+Then /^I should receive an Excel spreadsheet$/ do
+  headers = page.driver.response.headers
+  headers.should have_key 'Content-Type'
+  headers['Content-Type'].should match "application/vnd.ms.excel"
+end
+
+Given /^the following researchers exist:$/ do |users_table|
+  users_table.hashes.each do |hash|
+    begin
+      user = Factory(:user, hash)
+      user.add_role("member")
+      user.add_role("researcher")
+      user.save!
+      user.confirm!
+    rescue ActiveRecord::RecordInvalid
+      # assume this user is already created...
+    end
+  end
+end
+
+Given /^a mocked spreadsheet library$/ do
+  workbook = Spreadsheet::Workbook.new
+  workbook.stub("write").and_return('')
+  Spreadsheet::Workbook.stub(:new).and_return(workbook)
+end

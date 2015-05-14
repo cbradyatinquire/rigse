@@ -1,3 +1,4 @@
+NoCache.add_headers(response.headers)
 xml.otrunk(:id => "11111111-2222-3333-4444-555555555555") { 
   xml.imports { 
     xml.import :class => "org.concord.otrunk.OTIncludeRootObject"
@@ -7,12 +8,14 @@ xml.otrunk(:id => "11111111-2222-3333-4444-555555555555") {
     xml.import :class => "org.concord.sensor.state.OTInterfaceManager"
     xml.import :class => "org.concord.otrunk.overlay.OTOverlay"
     xml.import :class => "org.concord.otrunk.view.document.OTCompoundDoc"
+    xml.import :class => "org.concord.otrunk.navigation.OTNavigationHistoryService"
+    xml.import :class => "org.concord.framework.otrunk.wrapper.OTObjectSet"
   }
 
   xml.objects { 
     xml.OTSystem(:local_id => "system") { 
       xml.includes { 
-        if teacher_mode && runnable.class == Investigation 
+        if local_assigns[:teacher_mode] && runnable.class == Investigation 
           xml.OTInclude :href => investigation_teacher_otml_url(runnable)
         else
           # FIXME we need to pass options such as teacher_mode 
@@ -20,7 +23,7 @@ xml.otrunk(:id => "11111111-2222-3333-4444-555555555555") {
           xml.OTInclude :href => polymorphic_url(
               runnable, 
               :format => :otml, 
-              :teacher_mode => teacher_mode
+              :teacher_mode => local_assigns[:teacher_mode]
           )
         end
       }
@@ -34,6 +37,7 @@ xml.otrunk(:id => "11111111-2222-3333-4444-555555555555") {
         xml << ot_interface_manager(true)
         xml.object :refid => "#{runnable.uuid}!/lab_book_bundle"
         xml.object :refid => "#{runnable.uuid}!/script_engine_bundle"
+        xml << ot_navigation_history_service
       }
 
       # FIXME This should probably get figured out in a more dynamic way, 

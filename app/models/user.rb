@@ -1,10 +1,36 @@
 require 'digest/sha1'
 
 class User < ActiveRecord::Base
+  # Include default devise modules. Others available are:
+  # :token_authenticatable, :confirmable,
+  # :lockable, :timeoutable and :omniauthable
+  has_many :authentications, :dependent => :delete_all
+  has_many :access_grants, :dependent => :delete_all
+
+
+  devise :database_authenticatable, :registerable,:token_authenticatable, :confirmable, :bearer_token_authenticatable,
+         :recoverable,:timeoutable, :rememberable, :trackable, :validatable,:encryptable, :encryptor => :restful_authentication_sha1
+  self.token_authentication_key = "access_token"
+  default_scope where(User.arel_table[:state].not_in(['disabled']))
+
+  def apply_omniauth(omniauth)
+    authentications.build(:provider => omniauth['provider'], :uid => omniauth['uid'])
+  end
+
+  # scytacki: This code should be revised because the access_grant should not be trusted if
+  #  access_token_expires_at is NULL. It should only be trusted once it has been requested
+  #  by a Client that has verified its ID and SECRET.
+  #  I'm not fixing this now (Jan 30, 2015) because we are about
+  #  to do a release and we don't have time to fully test this change
+  def self.find_for_token_authentication(conditions)
+    where(["access_grants.access_token = ? AND (access_grants.access_token_expires_at IS NULL OR access_grants.access_token_expires_at > ?)", conditions[token_authentication_key], Time.now]).joins(:access_grants).select("users.*").first
+  end
+
   NO_EMAIL_STRING='no-email-'
   has_many :investigations
   has_many :resource_pages
   has_many :activities
+  has_many :interactives
   has_many :sections
   has_many :pages
   has_many :external_activities
@@ -19,11 +45,18 @@ class User < ActiveRecord::Base
   has_many :mw_modeler_pages, :class_name => 'Embeddable::MwModelerPage'
   has_many :n_logo_models, :class_name => 'Embeddable::NLogoModel'
 
-  named_scope :active, { :conditions => { :state => 'active' } }
-  named_scope :no_email, { :conditions => "email LIKE '#{NO_EMAIL_STRING}%'" }
-  named_scope :email, { :conditions => "email NOT LIKE '#{NO_EMAIL_STRING}%'" }
-  named_scope :default, { :conditions => { :default_user => true } }
-  named_scope :with_role, lambda { | role_name |
+  has_many :created_notices, :dependent => :destroy, :class_name => 'Admin::SiteNotice', :foreign_key => 'created_by'
+  has_many :updated_notices, :dependent => :destroy, :class_name => 'Admin::SiteNotice', :foreign_key => 'updated_by'
+
+  has_one :notice_user_display_status, :dependent => :destroy ,:class_name => "Admin::NoticeUserDisplayStatus", :foreign_key => "user_id"
+
+  scope :all_users, { :conditions => {}}
+  scope :active, { :conditions => { :state => 'active' } }
+  scope :suspended, {:conditions => { :state => 'suspended'}}
+  scope :no_email, { :conditions => "email LIKE '#{NO_EMAIL_STRING}%'" }
+  scope :email, { :conditions => "email NOT LIKE '#{NO_EMAIL_STRING}%'" }
+  scope :default, { :conditions => { :default_user => true } }
+  scope :with_role, lambda { | role_name |
     { :include => :roles, :conditions => ['roles.title = ?',role_name]}
   }
   has_settings
@@ -39,14 +72,12 @@ class User < ActiveRecord::Base
 
   include Changeable
 
-  include Authentication
-  include Authentication::ByPassword
-  include Authentication::ByCookieToken
-  include Authorization::AasmRoles
-
   attr_accessor :skip_notifications
 
   before_validation :strip_spaces
+
+  after_update :set_passive_users_as_pending
+  after_create :set_passive_users_as_pending
 
   # strip leading and trailing spaces from names, login and email
   def strip_spaces
@@ -61,30 +92,47 @@ class User < ActiveRecord::Base
 
   # Validations
 
-  validates_presence_of     :login
-  validates_length_of       :login,    :within => 3..40
-  validates_uniqueness_of   :login
-  validates_format_of       :login,    :with => Authentication.login_regex, :message => Authentication.bad_login_message
+  login_regex       = /\A\w[\w\.\-_@]+\z/                     # ASCII, strict
+  bad_login_message = "use only letters, numbers, and .-_@ please.".freeze
 
-  validates_format_of       :first_name,     :with => Authentication.name_regex,  :message => Authentication.bad_name_message, :allow_nil => true
+  name_regex        = /\A[^[:cntrl:]\\<>\/&]*\z/              # Unicode, permissive
+  bad_name_message  = "avoid non-printing characters and \\&gt;&lt;&amp;/ please.".freeze
+
+  email_name_regex  = '[\w\.%\+\-\']+'.freeze
+  domain_head_regex = '(?:[A-Z0-9\-]+\.)+'.freeze
+  domain_tld_regex  = '(?:[A-Z]{2}|com|org|net|edu|gov|mil|biz|info|mobi|name|aero|jobs|museum)'.freeze
+  email_regex       = /\A#{email_name_regex}@#{domain_head_regex}#{domain_tld_regex}\z/i
+  bad_email_message = "should look like an email address.".freeze
+
+
+
+  validates_presence_of     :login
+  validates_length_of       :login,    :within => 1..40
+  validates_uniqueness_of   :login, :case_sensitive => false
+  validates_format_of       :login,    :with => login_regex, :message => bad_login_message
+
+  validates_format_of       :first_name,     :with => name_regex,  :message => bad_name_message, :allow_nil => true
   validates_length_of       :first_name,     :maximum => 100
 
-  validates_format_of       :last_name,     :with => Authentication.name_regex,  :message => Authentication.bad_name_message, :allow_nil => true
+  validates_format_of       :last_name,     :with => name_regex,  :message => bad_name_message, :allow_nil => true
   validates_length_of       :last_name,     :maximum => 100
 
   validates_presence_of     :email
   validates_length_of       :email,    :within => 6..100 #r@a.wk
-  validates_uniqueness_of   :email
-  validates_format_of       :email,    :with => Authentication.email_regex, :message => Authentication.bad_email_message
+  validates_uniqueness_of   :email, :case_sensitive => false
+  validates_format_of       :email,    :with => email_regex, :message => bad_email_message
 
   validates_presence_of     :vendor_interface_id
   validates_presence_of     :password, :on => :update, :if => :updating_password?
+  validates_presence_of     :password_confirmation, :on => :create
+  validates_presence_of     :password_confirmation, :on => :update, :if => :updating_password?
+  validates_confirmation_of :password_confirmation
 
   # Relationships
   has_and_belongs_to_many :roles, :uniq => true, :join_table => "roles_users"
 
-  has_one :portal_teacher, :class_name => "Portal::Teacher"
-  has_one :portal_student, :class_name => "Portal::Student"
+  has_one :portal_teacher, :dependent => :destroy, :class_name => "Portal::Teacher", :inverse_of => :user
+  has_one :portal_student, :dependent => :destroy, :class_name => "Portal::Student", :inverse_of => :user
 
   belongs_to :vendor_interface, :class_name => 'Probe::VendorInterface'
 
@@ -107,6 +155,17 @@ class User < ActiveRecord::Base
 
     def login_does_not_exist?(login)
       User.count(:conditions => "`login` = '#{login}'") == 0
+    end
+
+    def suggest_login(first,last)
+      base = "#{first.first}#{last}".downcase.gsub(/[^a-z]/, "_")
+      suggestion = base
+      count = 0
+      while(login_exists?(suggestion))
+        count = count + 1
+        suggestion = "#{base}#{count}"
+      end
+      return suggestion
     end
 
     def default_users
@@ -144,17 +203,38 @@ class User < ActiveRecord::Base
   default_value_for :default_user, false
 
   # we need a default Probe::VendorInterface, 6 = Vernier Go! IO
-  default_value_for :vendor_interface_id, 6
+  default_value_for :vendor_interface_id, 14
 
   # HACK HACK HACK -- how to do attr_accessible from here?
   # prevents a user from submitting a crafted form that bypasses activation
   # anything else you want your user to change should be added here.
-  attr_accessible :login, :email, :first_name, :last_name, :password, :password_confirmation, :vendor_interface_id
+  attr_accessible :login, :email, :first_name, :last_name, :password, :password_confirmation, :remember_me,
+                  :vendor_interface_id, :external_id, :of_consenting_age, :have_consent,:confirmation_token,:confirmed_at,:state
 
   # Authenticates a user by their login name and unencrypted password.  Returns the user or nil.
   def self.authenticate(login, password)
-    u1 = find_in_state :first, :active, :conditions => { :login => login } # need to get the salt
-    u1 && u1.authenticated?(password) ? u1 : nil
+    u1 =  User.find(:first, :conditions => ['login = ? AND state = "active"',login])
+    u1 && u1.valid_password?(password) ? u1 : nil
+  end
+
+  # Creates a new access token valid for given time.
+  def create_access_token_valid_for(time)
+    return access_grants.create!(access_token_expires_at: time.from_now + 1.second).access_token
+  end
+
+  def active_for_authentication?
+    super && user_active?
+  end
+
+  def confirm!
+    super
+    self.state = "active"
+    save(:validate => true)
+    self.make_user_a_member
+  end
+
+  def inactive_message
+    user_active? ? super : "You cannot login since your account has been suspended."
   end
 
   def name
@@ -163,8 +243,13 @@ class User < ActiveRecord::Base
   end
 
   def name_and_login
-    _fullname = "#{first_name} #{last_name}".strip
-    _fullname.empty? ? login : "#{_fullname} (#{login})"
+    _fullname = "#{last_name}, #{first_name}".strip
+    _fullname.empty? ? login : "#{_fullname} ( #{login} )"
+  end
+
+  def full_name
+    _fullname = "#{last_name}, #{first_name}".strip
+    _fullname.empty? ? login : "#{_fullname}"
   end
 
   # Check if a user has a role.
@@ -202,7 +287,7 @@ class User < ActiveRecord::Base
   end
 
   def set_role_ids(role_ids)
-    all_roles = Role.find(:all)
+    all_roles = Role.all
     all_roles.each do |role|
       if role_ids.find { |id| id.to_i == role.id }
         add_role(role.title)
@@ -255,6 +340,18 @@ class User < ActiveRecord::Base
     self
   end
 
+  # If this user is a student, allow the student's teacher(s) to make
+  # changes to this.
+  def is_user?(user)
+    if user == self
+      true
+    elsif user.portal_teacher && self.portal_student && self.portal_student.has_teacher?(user.portal_teacher)
+      true
+    else
+      false
+    end
+  end
+
   def school
     school_person = self.portal_teacher || self.portal_student
     if (school_person)
@@ -288,9 +385,62 @@ class User < ActiveRecord::Base
     updating_password
   end
 
+  def only_a_student?
+    portal_student and !has_role?('admin', 'manager', 'researcher', 'author') and portal_teacher.nil?
+  end
+
+  def remember_me_for(time)
+    self.remember_me_until time.from_now.utc
+  end
+
+  def remember_me_until(time)
+    self.remember_created_at = time
+    self.remember_token = self.class.remember_token
+    save(:validate => false)
+  end
+
+  def forget_me
+    self.forget_me!
+  end
+
+  def set_passive_users_as_pending
+    if (self.state == 'passive' && (!self.confirmation_token.nil? && self.confirmed_at.nil?))
+      self.update_attribute(:state, "pending")
+    end
+    self.reload
+  end
+
+  def suspend!
+    self.update_attribute(:state, 'suspended')
+    self.reload
+  end
+
+  def delete!
+    self.update_attribute(:state, 'disabled')
+    self.update_attribute( :deleted_at, DateTime.now.utc)
+    self.reload
+  end
+
+  def unsuspend!
+    user_state = "active"
+    user_state = (self.confirmation_token.nil? && self.confirmed_at.nil?)? "passive" : user_state
+    user_state = (!self.confirmation_token.nil? && self.confirmed_at.nil?)? "pending" : user_state
+    self.update_attribute(:state, user_state)
+    self.reload
+  end
+
+  def user_active?
+    self.state != "suspended" && self.state != "disabled"
+  end
+
+  def materials
+    external_activities + activities + investigations
+  end
+
   protected
   def make_activation_code
     self.deleted_at = nil
     self.activation_code = self.class.make_token
   end
+
 end

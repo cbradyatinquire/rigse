@@ -1,30 +1,19 @@
 
-Given /the current project is using the following interfaces:/ do |interfaces_table|
+Given /the current settings is using the following interfaces:/ do |interfaces_table|
   interfaces = interfaces_table.hashes.map { |interf| Probe::VendorInterface.find_by_name(interf[:name])}
-  Admin::Project.default_project.enabled_vendor_interfaces = interfaces
-  Admin::Project.default_project.save
+  Admin::Settings.default_settings.enabled_vendor_interfaces = interfaces
+  Admin::Settings.default_settings.save
 end
 
-Then /the current project should be using the following interfaces:/ do |interfaces_table|
+Then /the current settings should be using the following interfaces:/ do |interfaces_table|
   interfaces_table.hashes.each do |hash|
-    Admin::Project.default_project.enabled_vendor_interfaces.should include(Probe::VendorInterface.find_by_name(hash[:name]))
+    Admin::Settings.default_settings.enabled_vendor_interfaces.should include(Probe::VendorInterface.find_by_name(hash[:name]))
   end
 end
 
-Given /login with username[\s=:,]*(\S+)\s+[(?and),\s]*password[\s=:,]+(\S+)\s*$/ do |username,password|
-  login_as(username, password)
-end
-
-When /^I log out$/ do
-  visit "/logout"
-end
-
 Given /^I am an anonymous user$/ do
-  User.anonymous(true)
-  get '/sessions/destroy'
-  response.should redirect_to('/')
-  follow_redirect!
-  true #  for now ...
+  visit('/users/sign_out')
+  ['/home', '/'].should include URI.parse(current_url).path
 end
 
 
@@ -60,7 +49,7 @@ end
 When /^(?:|I )should have the following selection options:$/ do |selection_table|
   within_fieldset("Probeware Interface") do
     selection_table.hashes.each do |hash|
-      if defined?(Spec::Rails::Matchers)
+      if defined?(RSpec::Rails::Matchers)
         page.should have_content(hash[:option])
       else
         assert page.has_content?(hash[:option])
@@ -72,7 +61,7 @@ end
 Then /^I should not see the following selection options:$/ do |selection_table|
   within_fieldset("Probeware Interface") do
     selection_table.hashes.each do |hash|
-      if defined?(Spec::Rails::Matchers)
+      if defined?(RSpec::Rails::Matchers)
         page.should_not have_content(hash[:option])
       else
         assert(! page.has_content?(hash[:option]))

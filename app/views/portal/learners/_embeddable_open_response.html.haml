@@ -2,9 +2,13 @@
   %div{:id => dom_id_for(embeddable, :item), :class => 'item'}
     %div{ :id => dom_id_for(embeddable, :details), :class => 'content' }
       - saveable = saveable_for_learner(embeddable, learner)
-      - css_style = saveable.answered? ? 'answered' : 'not_answered'
-      %item{:style => 'display: block;'}
+      - css_style = saveable.submitted? ? 'answered' : 'not_answered'
+      .item{:style => 'display: block;'}
         %strong
-          = embeddable.prompt
-      %item{:class => css_style, :style => 'display: block;'}
-        = h(saveable.answer).gsub("\n", '<br/>')
+          != embeddable.prompt
+        - if embeddable.is_required
+          %div
+            %span.tag required
+      .item{:class => css_style, :style => 'display: block;'}
+        - answer = h(saveable.submitted_answer) || ""
+        != answer.gsub("\n", '<br/>')

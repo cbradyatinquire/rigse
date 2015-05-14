@@ -35,6 +35,10 @@ describe Dataservice::BundleContent do
           <launchProperties key="sailotrunk.otmlurl" value="http://has.staging.concord.org/investigations/7.dynamic_otml"/>
         </sessionBundles>'
     }
+    # disable the after_save there is observer_spec to test that specific call
+    # we might want to try out the no_peeping_toms gem to handle this
+    # https://github.com/patmaddox/no-peeping-toms
+    Dataservice::BundleContentObserver.instance.should_receive(:after_save).any_number_of_times
   end
 
   it "should create a new instance given valid attributes" do
@@ -79,7 +83,7 @@ describe Dataservice::BundleContent do
 
   # this has to be called after the blob extraction has happened, so we know what url to look for
   def setup_expected(blob)
-    @blob_url = "http://localhost/dataservice/blobs/#{blob.id}.blob/#{blob.token}"
+    @blob_url = "/dataservice/blobs/#{blob.id}.blob/#{blob.token}"
     @expected_otml =   '<?xml version="1.0" encoding="UTF-8"?>
       <otrunk id="04dc61c3-6ff0-11df-a23f-6dcecc6a5613">
         <imports>
@@ -180,7 +184,7 @@ describe Dataservice::BundleContent do
       '
     @expected_body = '<sessionBundles xmlns:xmi="http://www.omg.org/XMI" xmlns:sailuserdata="sailuserdata" start="2010-06-04T11:35:09.053-0400" stop="2010-06-04T11:44:53.604-0400" curnitUUID="cccccccc-0009-0000-0000-000000000000" sessionUUID="863174f4-79a1-4c44-9733-6a94be2963c9" lastModified="2010-06-04T11:44:10.136-0400" timeDifference="743" localIP="10.11.12.235">
           <sockParts podId="dddddddd-0002-0000-0000-000000000000" rimName="ot.learner.data" rimShape="[B">
-            <sockEntries value="' + Dataservice::BundleContent.b64gzip_pack(@expected_otml) + '" millisecondsOffset="541083"/>
+            <sockEntries value="' + B64Gzip.pack(@expected_otml) + '" millisecondsOffset="541083"/>
           </sockParts>
           <agents role="RUN_WORKGROUP"/>
           <sdsReturnAddresses>http://has.staging.concord.org/dataservice/bundle_loggers/6/bundle_contents.bundle</sdsReturnAddresses>
@@ -239,7 +243,7 @@ describe Dataservice::BundleContent do
       it "should have an otml property if the xml is valid"  do
         # IMORTANT: this learner_otml is seriously FAKE. (np)
         @learner_otml = "<OTText>Hello World</OTText>"
-        @ziped_otml = Dataservice::BundleContent.b64gzip_pack(@learner_otml)
+        @ziped_otml = B64Gzip.pack(@learner_otml)
         @learner_socks = "<ot.learner.data><sockEntries value=\"#{@ziped_otml}\"/></ot.learner.data>"
         @bundle.body="<sessionBundles>#{@learner_socks}</sessionBundles>"
         @bundle.process_bundle
@@ -262,7 +266,8 @@ describe Dataservice::BundleContent do
 
       it "should process bundles before save" do
         @bundle.should_receive(:process_bundle)
-        @bundle.run_callbacks(:before_save)
+        # this runs the save callbacks and the return value of false causes it to skip the after_save callbacks
+        @bundle.run_callbacks(:save) { false }
       end
 
       it "should call process blobs after processing bundle" do
@@ -273,16 +278,16 @@ describe Dataservice::BundleContent do
 
     describe "collaborations and collaborators" do
       before(:each) do
-        @bundle = Factory(:dataservice_bundle_content)
+        @bundle = Factory(:full_dataservice_bundle_content)
         @student_a = Factory(:portal_student)
         @student_b = Factory(:portal_student)
         @student_c = Factory(:portal_student)
       end
       describe "basic associations" do
         it "should allow for collaborators" do
-          @bundle.collaborators << @student_a
-          @bundle.collaborators << @student_b
-          @bundle.collaborators << @student_c
+          @bundle.collaboration.students << @student_a
+          @bundle.collaboration.students << @student_b
+          @bundle.collaboration.students << @student_c
           @bundle.save
           @bundle.reload
           @bundle.should have(3).collaborators
@@ -298,34 +303,26 @@ describe Dataservice::BundleContent do
           @main_student = Factory(:portal_student)
           @clazz = mock_model(Portal::Clazz)
           @offering = mock_model(Portal::Offering, :clazz => @clazz)
-          @learner = mock_model(Portal::Learner, 
-                                :portal_student => @main_student, 
+          @learner = mock_model(Portal::Learner,
+                                :student => @main_student,
                                 :offering =>@offering)
           @learner_a = mock_model(Portal::Learner)
           @contents_a = []
           @bundle_logger = mock_model(Dataservice::BundleLogger, {
             :learner => @learner,
-            :bundle_contents => @contents_a
+            :bundle_contents => @contents_a,
+            :reload => true
           })
           @bundle.bundle_logger = @bundle_logger
         end
         it "should copy the bundle contents" do
-          @bundle.collaborators << @student_a
+          @bundle.collaboration.owner = @main_student
+          @bundle.collaboration.students << @student_a
           @offering.should_receive(:find_or_create_learner).with(@student_a).and_return(@learner_a)
           @learner_a.should_receive(:bundle_logger).and_return(@bundle_logger)
           @bundle.copy_to_collaborators
           @contents_a.should have(1).bundle_content
         end
-      end
-    end
-      
-    describe "observers" do
-      it " should run the after_save actions" do
-        @bundle_content = Factory(:dataservice_bundle_content)
-        @obs = Dataservice::BundleContentObserver.instance
-        @obs.should_receive(:process_saveables)
-        @obs.should_receive(:copy_to_collaborators)
-        @bundle_content.save!
       end
     end
 end

@@ -117,11 +117,6 @@ sensor or prediction graph_type so it sets the type to 1 (Sensor).
       puts
     end
     
-    desc 'create default Project from config/settings.yml'
-    task :create_default_project_from_config_settings_yml => :environment do
-      Admin::Project.create_or_update_default_project_from_settings_yml
-    end
-
     desc 'generate date_str attributes from version_str for MavenJnlp::VersionedJnlpUrls'
     task :generate_date_str_for_versioned_jnlp_urls => :environment do
       puts "\nprocessing #{MavenJnlp::VersionedJnlpUrl.count} MavenJnlp::VersionedJnlpUrl model instances, generating date_str from version_str\n"      
@@ -137,15 +132,7 @@ sensor or prediction graph_type so it sets the type to 1 (Sensor).
       Portal::Learner.find(:all).each do |learner|
         learner.console_logger = Dataservice::ConsoleLogger.create! unless learner.console_logger
         learner.bundle_logger = Dataservice::BundleLogger.create! unless learner.bundle_logger
-        learner.save!
-      end
-    end
-
-    desc "Create bundle and console loggers for learners"
-    task :create_bundle_and_console_loggers_for_learners => :environment do
-      Portal::Learner.find(:all).each do |learner|
-        learner.console_logger = Dataservice::ConsoleLogger.create! unless learner.console_logger
-        learner.bundle_logger = Dataservice::BundleLogger.create! unless learner.bundle_logger
+        learner.periodic_bundle_logger = Dataservice::PeriodicBundleLogger.create! unless learner.periodic_bundle_logger
         learner.save!
       end
     end
@@ -361,6 +348,14 @@ sensor or prediction graph_type so it sets the type to 1 (Sensor).
   end
 
   namespace :fixup do
+    desc "makes sure all Report::Learner attributes are not nil"
+    task :remove_report_learner_nils => :environment do
+      Report::Learner.find_each(:batch_size => 100) do |rl|
+        # we just need to trigger the save hooks
+        rl.save
+      end
+    end
+
     desc "reset all activity position information"
     task :reset_activity_positions => :environment do
       # We actually want to reset the position attribute on ALL activities
@@ -406,6 +401,36 @@ sensor or prediction graph_type so it sets the type to 1 (Sensor).
     desc "move vernier_goio vendor interface users to new JNA driver"
     task :use_jna_for_vernier_goio => :environment do
       Fixups.switch_driver('vernier_goio','JNI','JNA')
+    end
+
+    desc "remove 'teacher' students (users which both, loose their students"
+    task :remove_teachers_test_students => :environment do
+      Fixups.remove_teachers_test_students
+    end
+
+    desc "move all offerings to default class"
+    task :move_offerings_to_default_class => :environment do
+      clazz = Portal::Clazz.default_class
+      Portal::Offering.all.each do |offering|
+        next if offering.clazz_id == clazz.id
+        runnable_id = offering.runnable_id
+        runnable_type = offering.runnable_type
+        found   = Portal::Offering.find_all_by_runnable_id_and_runnable_type(runnable_id, runnable_type)
+        found   = found.detect { |o| o.clazz_id == clazz.id }
+        unless found
+          found = Portal::Offering.create(:runnable_id => runnable_id, :runnable_type => runnable_type, :clazz => clazz, :default_offering => true)
+        end
+        offering.learners.each do |learner|
+          learner.offering = found
+          learner.save
+        end
+      end
+      # We don't need to delete offerings, they are
+      # switched out dynamically in the controller
+      # Portal::Offering.all.each do |offering|
+      #   next if offering.clazz_id == clazz.id
+      #   offering.delete
+      # end
     end
   end
 end

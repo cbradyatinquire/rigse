@@ -9,15 +9,26 @@ def find_or_create_offering(runnable,clazz)
     offering
 end
 
-def login_as(username, password)
-  visit "/login"
-  within("#project-signin") do
-    fill_in("login", :with => username)
-    fill_in("password", :with => password)
-    click_button("Login")
+def login_as(username)
+  visit "/login/#{username}"
+  @cuke_current_username = username
+end
+
+def login_with_ui_as(username, password)
+  visit "/home"
+  within(".header-login-box") do
+    fill_in("header_login", :with => username)
+    fill_in("header_password", :with => password)
+    click_button("Log In")
     @cuke_current_username = username
-    #click_button("Submit")
   end
+  user = User.find_by_login(username)
+  user_first_name = user.first_name
+  user_last_name = user.last_name
+  page.should have_content("Welcome")
+  page.should have_content(user_first_name)
+  page.should have_content(user_last_name)
+  
 end
 
 # scroll_into_view is a hack so an element is scrolled into view in selenium in IE
@@ -32,7 +43,6 @@ def scroll_into_view(selector)
 end
 
 Given /the following users[(?exist):\s]*$/i do |users_table|
-  User.anonymous(true)
   users_table.hashes.each do |hash|
     roles = hash.delete('roles')
     if roles
@@ -45,9 +55,9 @@ Given /the following users[(?exist):\s]*$/i do |users_table|
       roles.each do |role|
         user.add_role(role)
       end
-      user.register
-      user.activate
       user.save!
+      user.confirm!
+      
     rescue ActiveRecord::RecordInvalid
       # assume this user is already created...
     end
@@ -55,8 +65,29 @@ Given /the following users[(?exist):\s]*$/i do |users_table|
 end
 
 Given /^(?:|I )login as an admin$/ do
-  admin = Factory.next(:admin_user)
-  login_as(admin.login, 'password')
+  login_as('admin')
+end
+
+
+# the quote in the pattern is to prevent this from matching other rules
+# and hopefully there is no need for quotes in a usernames
+Given /^I am logged in with the username ([^"]*)$/ do |username|
+  login_as(username)
+end
+
+Given /^(?:|I )login with username[\s=:,]*(\S+)$/ do |username|
+  login_as(username)
+  visit "/"
+end
+
+Given /(?:|I )login with username[\s=:,]*(\S+)\s+[(?and),\s]*password[\s=:,]+(\S+)\s*$/ do |username,password|
+  step 'I log out'
+  login_with_ui_as(username, password)
+end
+
+When /^I log out$/ do
+  visit "/users/sign_out"
+  ['/home', '/'].should include URI.parse(current_url).path
 end
 
 Given /^there are (\d+) (.+)$/ do |number, model_name|
@@ -75,7 +106,13 @@ Then /^the (.*) named "([^"]*)" should have "([^"]*)" equal to "([^"]*)"$/ do |c
   obj.send(field.to_sym).to_s.should == value
 end
 
-Then /"(.*)" should appear before "(.*)"/ do |first_item, second_item|
+Then /^"(.*)" should appear before "(.*)"$/ do |first_item, second_item|
+  # these first two lines make sure the content is actually on the page
+  # and will trigger synchronized waiting
+  page.should have_content(first_item)
+  page.should have_content(second_item)
+  # this won't trigger synchronized waiting so if there is synchronization issues you should
+  # try to verify something is on the page, before using this step
   page.body.should =~ /#{first_item}.*#{second_item}/m
 end
 
@@ -95,16 +132,20 @@ When /^(?:|I )debug$/ do
   0
 end
 
-When /^I wait "(.*)" second(?:|s)$/ do |seconds|
+When /^I wait (?:for )?(\d+) second(?:s)?$/ do |seconds|
   sleep(seconds.to_i)
 end
 
-When /^I wait (\d+) second(?:|s)$/ do |seconds|
+Then /^I should wait (?:for )?(\d+) second(?:s)?/ do |seconds|
   sleep(seconds.to_i)
 end
 
 Then /^I should not see the xpath "([^"]*)"$/ do |xpath|
   page.should have_no_xpath xpath
+end
+
+Then /^I should see the xpath "([^"]*)"$/ do |xpath|
+  page.should have_xpath xpath
 end
 
 Then /^the location should be "([^"]*)"$/ do |location|
@@ -114,4 +155,56 @@ end
 Then /^I should see the button "([^"]*)"$/ do |locator| 
   msg = "no button '#{locator}' found"
   find(:xpath, XPath::HTML.button(locator), :message => msg)
+end
+
+Then /^I should not see the button "([^"]*)"$/ do |button| 
+  page.should have_no_button(button)
+end
+
+Given /^PENDING/ do
+  pending
+end
+
+When /^(?:|I )accept the dialog$/ do 
+  page.driver.browser.switch_to.alert.accept
+end
+
+When /^(?:|I )dismiss the dialog$/ do 
+  page.driver.browser.switch_to.alert.dismiss
+end
+
+Then /^(?:|I )need to confirm "([^"]*)"$/ do |text|
+  # currently confirmations like this are done with dialogs
+  dialog_text = page.driver.browser.switch_to.alert.text
+  dialog_text.should == text
+  page.driver.browser.switch_to.alert.accept
+end
+
+When /^the newly opened window (should|should not) have content "(.*)"$/ do |present, content|
+  step 'I wait 2 seconds'
+  page.driver.browser.switch_to.window page.driver.browser.window_handles.last do
+    case present
+      when "should"
+      page.should have_content(content)
+      when "should not"
+      page.should have_no_content(content)
+    end
+  end
+end
+
+When /^Help link should not appear in the top navigation bar$/ do
+  find('#help').should_not be_visible
+end
+
+When /^(?:|I )close the newly opened window$/ do
+  page.driver.browser.switch_to.window page.driver.browser.window_handles.last do
+    page.execute_script "window.close();"
+  end
+end
+
+require 'securerandom'
+When /^I take a screenshot(?: as "([^"]*)")?/ do |file|
+  file = "tmp/#{SecureRandom.hex(4)}.png" unless file
+  page.driver.browser.save_screenshot file
+  puts "snapshot taken: #{file}"
 end

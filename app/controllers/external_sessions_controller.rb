@@ -20,21 +20,19 @@ class ExternalSessionsController < ApplicationController
   def password_authentication
     user = User.authenticate(params[:login], params[:password])
     if user
-      self.current_user = user
-      session[:original_user_id] = current_user.id
+      sign_in user
+      session[:original_user_id] = current_visitor.id
       successful_login
     else
       note_failed_signin
       @login = params[:login]
       @remember_me = params[:remember_me]
-      self.current_user = User.anonymous
       render :action => :new
     end
   end
   
   def successful_login
     new_cookie_flag = (params[:remember_me] == "1")
-    handle_remember_cookie! new_cookie_flag
     redirect_to(root_path)
     flash[:notice] = "Logged in successfully"
   end

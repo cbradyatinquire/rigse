@@ -1,0 +1,12 @@
+.investigation_other_data
+  - unless material_other_data[:grade_span_expectation].nil?
+    .data_header Scientific Domain
+    .data_value
+      = material_other_data[:domain_name]
+    .data_header Grade
+    .data_value
+      = material_other_data[:grade_span]
+  - unless material_other_data[:required_equipments].blank?
+    .data_header Required sensor(s)
+    .data_value
+      = material_other_data[:required_equipments]

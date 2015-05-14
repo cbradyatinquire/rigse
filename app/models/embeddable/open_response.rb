@@ -7,11 +7,11 @@ class Embeddable::OpenResponse < ActiveRecord::Base
   MAX_COLUMNS   = 80
   MIN_COLUMNS   = 10
 
-  set_table_name "embeddable_open_responses"
+  self.table_name = "embeddable_open_responses"
   belongs_to :user
   has_many :page_elements, :as => :embeddable
   has_many :pages, :through =>:page_elements
-  has_many :teacher_notes, :as => :authored_entity
+  has_many :teacher_notes, :dependent => :destroy, :as => :authored_entity
 
   has_many :saveables, :class_name => "Saveable::OpenResponse", :foreign_key => :open_response_id do
     def by_offering(offering)
@@ -69,9 +69,6 @@ class Embeddable::OpenResponse < ActiveRecord::Base
 
   send_update_events_to :investigations
   
-  def self.display_name
-    "Open Response"
-  end
 
   def investigations
     invs = []

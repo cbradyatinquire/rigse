@@ -2,7 +2,7 @@ class Embeddable::OpenResponsesController < ApplicationController
   # GET /Embeddable/open_responses
   # GET /Embeddable/open_responses.xml
   def index
-    # @open_responses = Embeddable::OpenResponse.find(:all)
+    # @open_responses = Embeddable::OpenResponse.all
     # @paginated_objects = @open_responses
 
     @open_responses = Embeddable::OpenResponse.search(params[:search], params[:page], nil)
@@ -23,20 +23,11 @@ class Embeddable::OpenResponsesController < ApplicationController
       respond_to do |format|
         format.html # show.html.haml
         format.otml { render :layout => "layouts/embeddable/open_response" } # open_response.otml.haml
-        format.jnlp { render :partial => 'shared/show', :locals => { :runnable => @open_response , :teacher_mode => false } }
-        format.config { render :partial => 'shared/show', :locals => { :runnable => @open_response, :session_id => (params[:session] || request.env["rack.session.options"][:id]) , :teacher_mode => false } }
-        format.dynamic_otml { render :partial => 'shared/show', :locals => {:runnable => @open_response, :teacher_mode => @teacher_mode} }
+        format.jnlp { render :partial => 'shared/installer', :locals => { :runnable => @open_response  } }
+        format.config { render :partial => 'shared/show', :locals => { :runnable => @open_response, :session_id => (params[:session] || request.env["rack.session.options"][:id])  } }
+        format.dynamic_otml { render :partial => 'shared/show', :locals => {:runnable => @open_response} }
         format.xml  { render :xml => @open_response }
       end
-    end
-  end
-
-  # GET /Embeddable/open_responses/1/print
-  def print
-    @open_response = Embeddable::OpenResponse.find(params[:id])
-    respond_to do |format|
-      format.html { render :layout => "layouts/embeddable/print" }
-      format.xml  { render :xml => @open_response }
     end
   end
 

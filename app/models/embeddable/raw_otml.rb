@@ -1,12 +1,14 @@
 class Embeddable::RawOtml < ActiveRecord::Base
-  set_table_name "embeddable_raw_otmls"
+  self.table_name = "embeddable_raw_otmls"
 
   belongs_to :user
   has_many :page_elements, :as => :embeddable
   has_many :pages, :through =>:page_elements
   has_many :teacher_notes, :as => :authored_entity
 
-  def after_create
+  after_create :initialize_otml_content_with_local_id
+
+  def initialize_otml_content_with_local_id
     self.otml_content = <<-HEREDOC
 <OTCompoundDoc local_id='raw_otml_#{self.id}'>
   <bodyText>
@@ -33,19 +35,6 @@ class Embeddable::RawOtml < ActiveRecord::Base
 
   default_value_for :name, "Embeddable::RawOtml element"
   default_value_for :description, "A simple OTCompoundDoc example ..."
-
-  def self.display_name
-    "Raw Otml"
-  end
-  
-  def self.authorable_in_java?
-    true
-  end
-
-  def authorable_in_java?
-    Embeddable::RawOtml.authorable_in_java?
-  end
-
 
   def imports
     if @imports

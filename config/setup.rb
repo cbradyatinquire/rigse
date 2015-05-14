@@ -2,14 +2,23 @@ require 'rubygems'
 require "bundler/setup"
 
 require 'fileutils'
-require 'yaml'
 require 'erb'
 require 'optparse'
 require 'pathname'
+require 'ostruct'
 
-JRUBY = defined? RUBY_ENGINE && RUBY_ENGINE == 'jruby'
-RAILS_ROOT = File.dirname(File.dirname(File.expand_path(__FILE__)))
-APP_DIR_NAME = File.basename(RAILS_ROOT)
+require 'yaml'
+YAML::ENGINE.yamler = "psych"
+
+JRUBY = defined?(RUBY_ENGINE) && RUBY_ENGINE == 'jruby'
+rails_root = File.dirname(File.dirname(File.expand_path(__FILE__)))
+APP_DIR_NAME = File.basename(rails_root)
+$LOAD_PATH.unshift(File.join(rails_root,"lib"))
+
+RAILS_ENV = 'development' unless defined?(RAILS_ENV)
+
+# Mock just a bit of the Rails3 Rails object for lib/app_settings.rb
+Rails = OpenStruct.new( "root" => rails_root, "env" => RAILS_ENV)
 
 # ==================================================================
 #
@@ -30,7 +39,7 @@ def copy_file(source, destination)
 end
 
 def rails_file_path(*args)
-  path = File.join([RAILS_ROOT] + args)
+  path = File.join([Rails.root] + args)
   if File.exists?(path)
     path = Pathname.new(path).realpath.to_s
   end
@@ -57,7 +66,7 @@ end
 
 
 # Add the unpacked gems in vendor/gems to the $LOAD_PATH
-Dir["#{RAILS_ROOT}/vendor/gems/**"].each do |dir|
+Dir["#{Rails.root}/vendor/gems/**"].each do |dir|
   $LOAD_PATH << File.expand_path(File.directory?(lib = "#{dir}/lib") ? lib : dir)
 end
 
@@ -65,10 +74,6 @@ require 'uuidtools'
 
 require rails_file_path(%w{ config initializers 00_core_extensions })
 require rails_file_path(%w{ lib app_settings })
-require rails_file_path(%w{ lib states_and_provinces })
-
-# Some of the AppSettings module methods need the constant RAILS_ENV defined
-RAILS_ENV = 'development' unless defined?(RAILS_ENV)
 
 include AppSettings
 
@@ -197,8 +202,8 @@ if @options[:force] && File.exists?(@db_config_path)
   FileUtils.rm(@db_config_path)
 end
 @db_config_sample_path         = rails_file_path(%w{config database.sample.yml})
-@rinet_data_config_path        = rails_file_path(%w{config rinet_data.yml})
-@rinet_data_config_sample_path = rails_file_path(%w{config rinet_data.sample.yml})
+@sis_import_data_config_path        = rails_file_path(%w{config sis_import_data.yml})
+@sis_import_data_config_sample_path = rails_file_path(%w{config sis_import_data.sample.yml})
 @mailer_config_path            = rails_file_path(%w{config mailer.yml})
 @mailer_config_sample_path     = rails_file_path(%w{config mailer.sample.yml})
 
@@ -248,7 +253,7 @@ Initial setup of Rails Portal application named '#{@options[:app_name]}' ...
 HEREDOC
 
 @db_config_sample              = YAML::load_file(@db_config_sample_path)
-@rinet_data_config_sample      = YAML::load_file(@rinet_data_config_sample_path)
+@sis_import_data_config_sample      = YAML::load_file(@sis_import_data_config_sample_path)
 @mailer_config_sample          = YAML::load_file(@mailer_config_sample_path)
 
 if @options[:site_url]
@@ -259,7 +264,7 @@ end
 
 @new_database_yml_created = false
 @new_settings_yml_created = false
-@new_rinet_data_yml_created = false
+@new_sis_import_data_yml_created = false
 @new_mailer_yml_created = false
 @new_sds_yml_created = false
 
@@ -275,14 +280,6 @@ end
 
 def using_rites_theme?
   !not_using_rites_theme?
-end
-
-def env_does_not_use_jnlps?(env)
-  @settings_config[env][:runnables_use] && @settings_config[env][:runnables_use] == 'browser'
-end
-
-def env_uses_jnlps?(env)
-  !env_does_not_use_jnlps?(env)
 end
 
 # ==================================================================
@@ -329,10 +326,6 @@ def create_new_database_yml
     @db_config[env]['username'] = @options[:db_user]
     @db_config[env]['password'] = @options[:db_password]
   end
-  %w{itsi ccportal}.each do |external_db|
-    @db_config[external_db]['username'] = @options[:db_user]
-    @db_config[external_db]['password'] = @options[:db_password]
-  end
   @db_config['cucumber'] = @db_config['test']
 
   unless @options[:quiet]
@@ -358,6 +351,7 @@ def create_new_settings_yml
 
     HEREDOC
   end
+  generate_devise_pepper_for_all_environments(@settings_config)
   File.open(@settings_config_path, 'w') {|f| f.write @settings_config.to_yaml }
 end
 
@@ -376,17 +370,17 @@ def create_new_mailer_yml
   File.open(@mailer_config_path, 'w') {|f| f.write @mailer_config.to_yaml }
 end
 
-def create_new_rinet_data_yml
-  @rinet_data_config = @rinet_data_config_sample
+def create_new_sis_import_data_yml
+  @sis_import_data_config = @sis_import_data_config_sample
   unless @options[:quiet]
     puts <<-HEREDOC
 
-       creating: #{@rinet_data_config_path}
-  from template: #{@rinet_data_config_sample_path}
+       creating: #{@sis_import_data_config_path}
+  from template: #{@sis_import_data_config_sample_path}
 
     HEREDOC
   end
-  File.open(@rinet_data_config_path, 'w') {|f| f.write @rinet_data_config.to_yaml }
+  File.open(@sis_import_data_config_path, 'w') {|f| f.write @sis_import_data_config.to_yaml }
 end
 
 # ==================================================================
@@ -527,38 +521,6 @@ def check_for_config_settings_yml
           @settings_config[env][:default_admin_user] = default_admin_user
         end
 
-        unless @settings_config[env][:default_maven_jnlp] || env_does_not_use_jnlps?(env)
-          unless @options[:quiet]
-            puts <<-HEREDOC
-
-  Collecting default_maven_jnlp settings into one hash, :default_maven_jnlp in the #{env} section of settings.yml
-
-            HEREDOC
-          end
-
-          default_maven_jnlp = {}
-          original_keys = %w{default_maven_jnlp_server default_maven_jnlp_family default_jnlp_version}
-          new_keys = %w{server family version}
-          original_keys.zip(new_keys).each do |key_pair|
-            default_maven_jnlp[key_pair[1].to_sym] = @settings_config[env].delete(key_pair[0].to_sym)
-          end
-          @settings_config[env][:default_maven_jnlp] = default_maven_jnlp
-        end
-
-        unless @settings_config[env][:valid_sakai_instances] || not_using_rites_theme?
-          unless @options[:quiet]
-            puts <<-HEREDOC
-
-  The valid_sakai_instances parameter does not yet exist in the #{env} section of settings.yml
-
-  Copying the values in the sample: #{@settings_config_sample[env][:valid_sakai_instances].join(', ')} into settings.yml.
-
-            HEREDOC
-          end
-          @settings_config[env][:valid_sakai_instances] = @settings_config_sample[env][:valid_sakai_instances]
-        end
-
-
         unless @settings_config[env][:theme]
           unless @options[:quiet]
             puts <<-HEREDOC
@@ -586,6 +548,41 @@ def check_for_config_settings_yml
           @settings_config[env][:use_gse] = true
         end
       end
+      
+      
+      if @settings_config[env][:pepper].nil?
+        new_pepper = generate_devise_pepper
+        unless @options[:quiet]
+          puts <<-HEREDOC
+
+  The pepper parameter does not yet exist in the #{env} section of settings.yml
+
+  Setting it to '#{new_pepper}'.
+
+          HEREDOC
+        end
+        
+        @settings_config[env][:pepper] = new_pepper
+      end
+      
+      
+      
+      if @settings_config[env][:password_for_default_users].nil?
+        password_for_default_users = 'secret'
+        unless @options[:quiet]
+          puts <<-HEREDOC
+
+  The password_for_default_users parameter does not yet exist in the #{env} section of settings.yml
+
+  Setting it to '#{password_for_default_users}'.
+
+          HEREDOC
+        end
+        
+        @settings_config[env][:password_for_default_users] = password_for_default_users
+      end
+      
+      
     end
   end
 end
@@ -607,10 +604,10 @@ def check_for_config_mailer_yml
 end
 
 #
-# check for config/rinet_data.yml
+# check for config/sis_import_data.yml
 #
-def check_for_config_rinet_data_yml
-  unless file_exists_and_is_not_empty?(@rinet_data_config_path)
+def check_for_config_sis_import_data_yml
+  unless file_exists_and_is_not_empty?(@sis_import_data_config_path)
     unless @options[:quiet]
       puts <<-HEREDOC
 
@@ -618,8 +615,8 @@ def check_for_config_rinet_data_yml
 
       HEREDOC
     end
-    create_new_rinet_data_yml
-    @new_rinet_data_yml_created = true
+    create_new_sis_import_data_yml
+    @new_sis_import_data_yml_created = true
   end
 end
 
@@ -722,41 +719,10 @@ Here are the current settings in config/database.yml:
       @db_config[env]['database'] = ask("  database name: ") { |q| q.default = @db_config[env]['database'] }
       @db_config[env]['username'] = ask("       username: ") { |q| q.default = @db_config[env]['username'] }
       @db_config[env]['password'] = ask("       password: ") { |q| q.default = @db_config[env]['password'] }
-      @db_config[env]['adaptor'] = "<% if RUBY_PLATFORM =~ /java/ %>jdbcmysql<% else %>mysql<% end %>"
+      @db_config[env]['adapter'] = "<% if RUBY_PLATFORM =~ /java/ %>jdbcmysql<% else %>mysql2<% end %>"
     end
 
     @db_config['cucumber'] = @db_config['test']
-
-    puts <<-HEREDOC
-
-If you have access to a ITSI database for importing ITSI Activities into #{@options[:theme].upcase}
-specify the values for the mysql database name, host, username, password, and asset_url.
-
-    HEREDOC
-
-    puts "\nSetting parameters for the ITSI database:\n\n"
-    @db_config['itsi']['database']  = ask("  database name: ") { |q| q.default = @db_config['itsi']['database'] }
-    @db_config['itsi']['host']      = ask("           host: ") { |q| q.default = @db_config['itsi']['host']  }
-    @db_config['itsi']['username']  = ask("       username: ") { |q| q.default = @db_config['itsi']['username'] }
-    @db_config['itsi']['password']  = ask("       password: ") { |q| q.default = @db_config['itsi']['password'] }
-    @db_config['itsi']['asset_url'] = ask("      asset url: ") { |q| q.default = @db_config['itsi']['asset_url'] }
-    @db_config['itsi']['adaptor'] = "<% if RUBY_PLATFORM =~ /java/ %>jdbcmysql<% else %>mysql<% end %>"
-
-    puts <<-HEREDOC
-
-If you have access to a CCPortal database that indexes ITSI Activities into sequenced Units
-specify the values for the mysql database name, host, username, password.
-
-    HEREDOC
-
-    puts "\nSetting parameters for the CCPortal database:\n\n"
-    @db_config['ccportal']['database']  = ask("  database name: ") { |q| q.default = @db_config['ccportal']['database'] }
-    @db_config['ccportal']['host']      = ask("           host: ") { |q| q.default = @db_config['ccportal']['host']  }
-    @db_config['ccportal']['username']  = ask("       username: ") { |q| q.default = @db_config['ccportal']['username'] }
-    @db_config['ccportal']['password']  = ask("       password: ") { |q| q.default = @db_config['ccportal']['password'] }
-    @db_config['ccportal']['adaptor'] = "<% if RUBY_PLATFORM =~ /java/ %>jdbcmysql<% else %>mysql<% end %>"
-
-    puts <<-HEREDOC
 
     Here is the updated database configuration:
     #{@db_config.to_yaml}
@@ -769,48 +735,48 @@ specify the values for the mysql database name, host, username, password.
 end
 
 #
-# update config/rinet_data.yml
+# update config/sis_import_data.yml
 #
-def update_config_rinet_data_yml
-  @rinet_data_config = YAML::load_file(@rinet_data_config_path)
+def update_config_sis_import_data_yml
+  @sis_import_data_config = YAML::load_file(@sis_import_data_config_path)
 
   unless @options[:quiet]
     puts <<-HEREDOC
 ----------------------------------------
 
-Updating the RINET CSV Account import configuration file: config/rinet_data.yml
+Updating the RINET CSV Account import configuration file: config/sis_import_data.yml
 
 Specify values for the host, username and password for the RINET SFTP
-site to download Sakai account data in CSV format.
+site to download import account data in CSV format.
 
-Here are the current settings in config/rinet_data.yml:
+Here are the current settings in config/sis_import_data.yml:
 
-#{@rinet_data_config.to_yaml}
+#{@sis_import_data_config.to_yaml}
     HEREDOC
   end
   if @options[:answer_yes] || agree("Accept defaults? (y/n) ")
-    File.open(@rinet_data_config_path, 'w') {|f| f.write @rinet_data_config.to_yaml }
+    File.open(@sis_import_data_config_path, 'w') {|f| f.write @sis_import_data_config.to_yaml }
   else
-    create_new_rinet_data_yml unless @new_rinet_data_yml_created
+    create_new_sis_import_data_yml unless @new_sis_import_data_yml_created
 
     %w{development test staging production}.each do |env|
-      puts "\nSetting parameters for the #{env} rinet_data:\n"
-      @rinet_data_config[env]['host']     = ask("         RINET host: ") { |q| q.default = @rinet_data_config[env]['host'] }
-      @rinet_data_config[env]['username'] = ask("     RINET username: ") { |q| q.default = @rinet_data_config[env]['username'] }
-      @rinet_data_config[env]['password'] = ask("     RINET password: ") { |q| q.default = @rinet_data_config[env]['password'] }
+      puts "\nSetting parameters for the #{env} sis_import_data:\n"
+      @sis_import_data_config[env]['host']     = ask("         RINET host: ") { |q| q.default = @sis_import_data_config[env]['host'] }
+      @sis_import_data_config[env]['username'] = ask("     RINET username: ") { |q| q.default = @sis_import_data_config[env]['username'] }
+      @sis_import_data_config[env]['password'] = ask("     RINET password: ") { |q| q.default = @sis_import_data_config[env]['password'] }
       puts
     end
 
     unless @options[:quiet]
       puts <<-HEREDOC
 
-    Here is the updated rinet_data configuration:
-    #{@rinet_data_config.to_yaml}
+    Here is the updated sis_import_data configuration:
+    #{@sis_import_data_config.to_yaml}
       HEREDOC
     end
 
-    if agree("OK to save to config/rinet_data.yml? (y/n): ")
-      File.open(@rinet_data_config_path, 'w') {|f| f.write @rinet_data_config.to_yaml }
+    if agree("OK to save to config/sis_import_data.yml? (y/n): ")
+      File.open(@sis_import_data_config_path, 'w') {|f| f.write @sis_import_data_config.to_yaml }
     end
   end
 end
@@ -899,54 +865,6 @@ School level.  The following codes are used for active school levels:
   @settings_config[env][:active_school_levels] =  active_school_levels.split
 end
 
-def get_valid_sakai_instances(env)
-  puts <<-HEREDOC
-
-Specify the sakai server urls from which it is ok to receive linktool requests.
-Delimit multiple items with spaces.
-
-  HEREDOC
-  sakai_instances = (@settings_config[env][:valid_sakai_instances] || []).join(' ')
-  sakai_instances =  ask("   valid_sakai_instances: ") { |q| q.default = sakai_instances }
-  @settings_config[env][:valid_sakai_instances] = sakai_instances.split
-end
-
-def get_maven_jnlp_settings(env)
-  puts <<-HEREDOC
-
-  Specify the maven_jnlp server used for providing jnlps and jars dor running Java OTrunk applications.
-
-  HEREDOC
-  @settings_config[env][:maven_jnlp_servers] ||= [{}]
-  maven_jnlp_server = @settings_config[env][:maven_jnlp_servers][0]
-  maven_jnlp_server[:host] =  ask("   host: ") { |q| q.default = maven_jnlp_server[:host] }
-  maven_jnlp_server[:path] =  ask("   path: ") { |q| q.default = maven_jnlp_server[:path] }
-  maven_jnlp_server[:name] =  ask("   name: ") { |q| q.default = maven_jnlp_server[:name] }
-  @settings_config[env][:maven_jnlp_servers][0] = maven_jnlp_server
-  @settings_config[env][:default_maven_jnlp_server] = maven_jnlp_server[:name]
-  @settings_config[env][:default_maven_jnlp_family] =  ask("   default_maven_jnlp_family: ") { |q| q.default = @settings_config[env][:default_maven_jnlp_family] }
-
-  maven_jnlp_families = (@settings_config[env][:maven_jnlp_families] || []).join(' ')
-  puts <<-HEREDOC
-
-  The following is a list of the active maven_jnlp_families:
-
-    #{maven_jnlp_families}
-
-  Specify which maven_jnlp_families to include. Enter nothing to include all
-  the maven_jnlp_families. Delimit multiple items with spaces.
-
-  HEREDOC
-  maven_jnlp_families =  ask("   maven_jnlp_families: ") { |q| q.default = maven_jnlp_families }
-  @settings_config[env][:maven_jnlp_families] =  maven_jnlp_families.split
-  puts <<-HEREDOC
-
-  Specify the default_jnlp_version to use:
-
-  HEREDOC
-  @settings_config[env][:default_jnlp_version] =  ask("   default_jnlp_version: ") { |q| q.default = @settings_config[env][:default_jnlp_version] }
-end
-
 # ==================================================================
 #
 #   "Update existing" settings helper methods
@@ -1019,34 +937,9 @@ Any full member can become part of the site school and district.
       get_active_grades_settings(env)
 
       #
-      # ---- valid_sakai_instances ----
+      # ---- valid_school_levels  ----
       #
       get_active_school_levels(env)
-
-      #
-      # ---- valid_sakai_instances ----
-      #
-      get_valid_sakai_instances(env)
-
-      #
-      # ---- enable_default_users ----
-      #
-      puts <<-HEREDOC
-
-A number of default users are created that are good for testing but insecure for
-production deployments. Setting this value to true will enable the default users
-setting it to false will disable the default_users for this envioronment.
-
-      HEREDOC
-      default_users = @settings_config[env][:enable_default_users]
-      default_users = false if default_users.nil?
-      default_users = ask("  enable_default_users: ", ['true', 'false']) { |q| q.default = default_users.to_s }
-      @settings_config[env][:enable_default_users] = eval(default_users)
-
-      #
-      # ---- maven_jnlp ----
-      #
-      get_maven_jnlp_settings(env)
 
     end # each env
 
@@ -1158,6 +1051,22 @@ Here is the new mailer configuration:
   end
 end
 
+# generate new pepper for devise
+def generate_devise_pepper
+  pepper = UUIDTools::UUID.timestamp_create.to_s
+  pepper
+end
+
+def generate_devise_pepper_for_all_environments(settings, unique_pepper_for_each_env = false)
+  new_pepper = generate_devise_pepper
+  %w{development test cucumber staging production}.each do |env|
+    settings[env][:pepper] = new_pepper
+    if unique_pepper_for_each_env
+      new_pepper = generate_devise_pepper
+    end
+  end
+end
+
 # ==================================================================
 #
 #   Main setup
@@ -1174,13 +1083,13 @@ end
 check_for_git_submodules
 check_for_config_database_yml
 check_for_config_settings_yml
-check_for_config_rinet_data_yml
+check_for_config_sis_import_data_yml
 check_for_config_mailer_yml
 check_for_log_development_log
 check_for_config_initializers_site_keys_rb
 update_config_database_yml
 update_config_settings_yml
-update_config_rinet_data_yml
+update_config_sis_import_data_yml
 update_config_mailer_yml
 if @options[:quiet]
   puts "done.\n\nTo finish (if you are building from scratch):\n\n"

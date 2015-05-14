@@ -1,12 +1,15 @@
-- current_user.roles.each do |role|
-  = render :partial => role.title
+= render :partial => "sso_banner"
+= render :partial => "notice"
 
+- role_partials = current_visitor.roles.map{|role| role.title}
 - if @portal_teacher
-  = render :partial => "teacher"
-  
+  - role_partials << "teacher"
 - if @portal_student
-  = render :partial => "student"
+  - role_partials << "student"
 
-= yield :authored_investigations
+/ reorder author to the end
+- if role_partials.delete("author")
+  - role_partials << "author"
 
-= render :partial => "resource_pages"
+- role_partials.each do |role|
+  = render :partial => role

@@ -1,5 +1,5 @@
 class Portal::Subject < ActiveRecord::Base
-  set_table_name :portal_subjects
+  self.table_name = :portal_subjects
   
   acts_as_replicatable
   
@@ -14,8 +14,5 @@ class Portal::Subject < ActiveRecord::Base
       @@searchable_attributes
     end
 
-    def display_name
-      "Subject"
-    end
   end
 end

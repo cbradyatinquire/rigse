@@ -1,13 +1,11 @@
 require File.expand_path('../../../spec_helper', __FILE__)
 
 describe Portal::DistrictsController do
-  integrate_views  
   def mock_district(_stubs={})
     stubs = {
-      :name => 'default district', 
+      :name => 'default district',
       :description => 'default district',
-      :changeable? => :flase, 
-      :authorable_in_java? => false,
+      :changeable? => :false,
       :schools => [],
       :nces_district_id => nil
     }
@@ -17,7 +15,7 @@ describe Portal::DistrictsController do
   end
 
   before(:each) do
-    generate_default_project_and_jnlps_with_mocks
+    generate_default_settings_and_jnlps_with_mocks
     generate_portal_resources_with_mocks
     login_admin
     @district = mock_district 
@@ -25,7 +23,7 @@ describe Portal::DistrictsController do
 
   describe "GET index" do
     it "assigns all portal_districts as @portal_districts" do
-      Portal::District.stub!(:find).with(:all, hash_including(will_paginate_params)).and_return([@district])
+      Portal::District.stub!(:search).and_return([@district])
       get :index
       assigns[:portal_districts].should include @district
     end

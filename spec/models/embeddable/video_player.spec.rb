@@ -1,5 +1,7 @@
 require File.expand_path('../../../spec_helper', __FILE__)
 
+require 'fakeweb'
+
 describe Embeddable::VideoPlayer do
   before(:all) do
     @small_video_url = "http://example.com/small_video.mpeg"
@@ -12,7 +14,7 @@ describe Embeddable::VideoPlayer do
     FakeWeb.register_uri(:head, @non_existant_image, :status => ["404", "Not Found"])
     FakeWeb.register_uri(:head, @non_existant_video, :status => ["404", "Not Found"])
   end
-  
+
   before(:each) do
     @valid_attributes={
       :video_url => @small_video_url,

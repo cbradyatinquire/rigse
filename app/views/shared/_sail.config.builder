@@ -32,15 +32,16 @@ if local_assigns[:properties]
 end
 
 response.headers["Content-Type"] = "application/xml"
-response.headers["Cache-Control"] = "max-age=1"
+NoCache.add_headers(response.headers)
 session_options = request.env["rack.session.options"]
 xml.java(:class => "java.beans.XMLDecoder", :version => "1.4.0") {
   xml.object("class" => "net.sf.sail.emf.launch.HttpCookieServiceImpl") {
     xml.void("property" => "cookieProperties") {
       xml.object("class" => "java.util.Properties") {
         xml.void("method" => "setProperty") {
-          xml.string("*.concord.org")
-          xml.string("#{session_options[:key]}=#{session_options[:id]}; path=#{session_options[:path]}")
+          # set cookie domain; seems to work for localhost and 127.0.0.1 too.
+          xml.string(request.host.split(".")[1..-1].insert(0,"*").join("."))
+          xml.string("#{Rails.application.config.session_options[:key]}=#{session_options[:id]}; path=#{session_options[:path]}")
         }
       }
     }

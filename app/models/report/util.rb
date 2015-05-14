@@ -17,16 +17,21 @@ class Report::Util
 
   @@cache = {}
 
-  def self.factory(offering, show_only_active_learners = true)
+  def self.factory(offering, show_only_active_learners = true, skip_filters = false)
     maintenance
     ## TODO This class should probably be thread-safe eventually
-    @@cache[offering] ||= Report::Util.new(offering, show_only_active_learners)
+    @@cache[offering] ||= Report::Util.new(offering, show_only_active_learners, skip_filters)
     return @@cache[offering]
   end
 
   def self.reload(offering)
     invalidate(offering)
     return factory(offering)
+  end
+
+  def self.reload_without_filters(offering)
+    invalidate(offering)
+    return factory(offering, true, true)
   end
 
   def self.invalidate(offering)
@@ -55,12 +60,12 @@ class Report::Util
     results = Array(@saveables_by_learner_id[options[:learner].id]) if options[:learner]
     results = results & Array(@saveables_by_answered[true]) if options[:answered]
     results = results & Array(@saveables_by_embeddable[options[:embeddable]]) if options[:embeddable]
-    results = results & Array(@saveables_by_correct[true]) if options[:correct]
     if options[:embeddables]
       embeddables = options[:embeddables]
       results = results & embeddables.map { |e| @saveables_by_embeddable[e]}.flatten
     end
     results = results & Array(@saveables_by_correct[true]) if options[:correct]
+    results = results & Array(@saveables_by_submittted[true]) if options[:submitted]
     return results
   end
 
@@ -71,19 +76,29 @@ class Report::Util
     return results
   end
 
-  def initialize(offering, show_only_active_learners=false,skip_filters=false)
+  def initialize(offering_or_learner, show_only_active_learners=false, skip_filters=false)
     @last_accessed = Time.now
-    @offering = offering
+    if offering_or_learner.kind_of?(Portal::Learner)
+      @offering = offering_or_learner.offering
+
+      @learners = [offering_or_learner]
+    else
+      @offering = offering_or_learner
+
+      @learners = @offering.learners
+      @learners = @learners.select{|l| l.bundle_logger.bundle_contents.count > 0 || l.saveable_count > 0 } if show_only_active_learners
+    end
+
     @report_embeddable_filter = @offering.report_embeddable_filter
     unless (@report_embeddable_filter)
       @report_embeddable_filter = Report::EmbeddableFilter.create(:offering => @offering, :embeddables => [])
       @offering.reload
     end
 
-    @learners = @offering.learners
-    @learners = @learners.select{|l| l.bundle_logger.bundle_contents.count > 0 } if show_only_active_learners
-
-    assignable = offering.runnable
+    assignable = @offering.runnable
+    if assignable.is_a?(ExternalActivity) && assignable.template
+      assignable = assignable.template
+    end
 
     @saveables               = []
     @saveables_by_type       = {}
@@ -91,6 +106,7 @@ class Report::Util
     @saveables_by_embeddable = {}
     @saveables_by_correct    = {}
     @saveables_by_answered   = {}
+    @saveables_by_submittted = {}
 
     reportables          = assignable.reportable_elements
 
@@ -98,15 +114,14 @@ class Report::Util
     unless skip_filters
       results = @report_embeddable_filter.filter(results)
       allowed_embeddables = @report_embeddable_filter.embeddables
-      reportables          = @offering.runnable.reportable_elements
       if ! @report_embeddable_filter.ignore && allowed_embeddables.size > 0
         reportables = reportables.select{|r| allowed_embeddables.include?(r[:embeddable]) }
       end
     end
-    #reportables          = @offering.runnable.reportable_elements
-    elements             = reportables.map       { |r| r[:element]    } 
-    @embeddables         = reportables.map       { |r| r[:embeddable] } 
-    @embeddables_by_type = @embeddables.group_by { |e| e.class.to_s   } 
+
+    elements             = reportables.map       { |r| r[:element]    }
+    @embeddables         = reportables.map       { |r| r[:embeddable] }
+    @embeddables_by_type = @embeddables.group_by { |e| e.class.to_s   }
 
     activity_lambda = lambda { |e| e[:activity] }
     section_lambda  = lambda { |e| e[:section]  }
@@ -116,17 +131,33 @@ class Report::Util
       lambdas = [activity_lambda, section_lambda, page_lambda]
     elsif assignable.is_a? Activity
       lambdas = [section_lambda, page_lambda]
+    elsif assignable.is_a? Page
+      lambdas = [page_lambda]
     end
-      
+
     @page_elements  = reportables.extended_group_by(lambdas)
 
-    Investigation.saveable_types.each do |type|
-      all = type.find_all_by_offering_id(@offering.id)
+    ResponseTypes.saveable_types.each do |type|
+      all = []
+      if @learners.size == 1
+        all = type.find_all_by_learner_id(@learners[0].id)
+      else
+        all = type.find_all_by_offering_id(@offering.id)
+      end
       @saveables += all
       @saveables_by_type[type.to_s] = all
     end
-    # If an investigation has changed, and daveable elements have been removed (eek!)
-    current =  @saveables.select { |s| assignable.page_elements.map{|pe|pe.embeddable}.include? s.embeddable}
+    # If an investigation has changed, and saveable elements have been removed (eek!)
+    assignable_embeddables = assignable.page_elements.map{|pe|pe.embeddable}
+    current_embeddables = assignable_embeddables.map{|ce|
+      if ce.kind_of?(Embeddable::InnerPage)
+        ## collect all the inner page pages' embeddables
+        ce.sub_pages.collect{|ip| ip.page_elements.map{|ippe| ippe.embeddable} }.flatten
+      else
+        ce
+      end
+    }.flatten
+    current =  @saveables.select { |s| current_embeddables.include? s.embeddable}
     old = @saveables - current
     if old.size > 0
       warning = "WARNING: missing #{old.size} removed reportables in report for #{assignable.name}"
@@ -134,11 +165,11 @@ class Report::Util
       Rails.logger.info(warning)
       @saveables = current
     end
-    @saveables_by_answered   = @saveables.group_by { |s| s.answered?  } 
-    @saveables_by_answered   = @saveables.group_by { |s| s.answered?  } 
-    @saveables_by_learner_id = @saveables.group_by { |s| s.learner_id } 
-    @saveables_by_embeddable = @saveables.group_by { |s| s.embeddable } 
+    @saveables_by_answered   = @saveables.group_by { |s| s.answered?  }
+    @saveables_by_learner_id = @saveables.group_by { |s| s.learner_id }
+    @saveables_by_embeddable = @saveables.group_by { |s| s.embeddable }
     @saveables_by_correct    = @saveables.group_by { |s| (s.respond_to? 'answered_correctly?') ? s.answered_correctly? : false }
+    @saveables_by_submittted = @saveables.group_by { |s| s.submitted? }
   end
 
   def complete_number(learner,activity = nil)
@@ -148,10 +179,18 @@ class Report::Util
     return saveables(:learner => learner).size
   end
 
-  def complete_percent(learner)
-    completed = Float(complete_number(learner))
-    total = Float(embeddables.size)
+  def complete_percent(learner,activity = nil)
+    completed = Float(complete_number(learner,activity))
+    if activity
+      total = Float(activity.reportable_elements.map { |r| r[:embeddable]}.size)
+    else
+      total = Float(embeddables.size)
+    end
     return total < 0.5 ? 0.0 : (completed/total) * 100.0
+  end
+
+  def answered_number(learner)
+    return saveables(:learner => learner, :answered => true).size
   end
 
   def correct_number(learner)

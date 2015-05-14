@@ -3,13 +3,13 @@ require 'pathname'
 
 module AppSettings
 
-  APP_SETTINGS_PATH = "#{RAILS_ROOT}/config/settings.yml"
+  APP_SETTINGS_PATH = File.expand_path("../../config/settings.yml", __FILE__)
 
   def settings_exists?(path=APP_SETTINGS_PATH)
     File.exists?(path) && File.stat(path).size > 0
   end
 
-  def load_app_settings(env=RAILS_ENV)
+  def load_app_settings(env=::Rails.env)
     load_all_app_settings[env]
   end
 
@@ -44,3 +44,28 @@ module AppSettings
   end
 
 end
+
+
+# Recursively converts the keys in a Hash to symbols.
+# Also converts the keys in any Array elements which are 
+# Hashes to symbols.
+module HashExtensions
+  def recursive_symbolize_keys
+    inject({}) do |acc, (k,v)|
+      key = String === k ? k.to_sym : k
+      case v
+      when Hash
+        value = v.recursive_symbolize_keys
+      when Array
+        value = v.inject([]) do |arr, e|
+          arr << (e.is_a?(Hash) ? e.recursive_symbolize_keys : e)
+        end
+      else
+        value = v
+      end
+      acc[key] = value
+      acc
+    end
+  end
+end
+Hash.send(:include, HashExtensions)

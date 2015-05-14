@@ -1,4 +1,3 @@
-@selenium
 Feature: Limit access to restricted routes
 
 Only logged in users with appropriate roles should be able to see and change resources in the portal.
@@ -14,9 +13,10 @@ In NO case should the system allow:
   So that we can protect our users data
 
   Background:
-    Given The default project and jnlp resources exist using mocks
+    Given The default settings and jnlp resources exist using factories
+    And the database has been seeded
 
-  Scenario Outline: Anonymous user cant access dataservice routes
+  Scenario Outline: Anonymous user can't access dataservice routes
     Given I am not logged in
     When I visit the route <route>
     Then I should be on my home page
@@ -25,15 +25,15 @@ In NO case should the system allow:
       | route                         |
       | /dataservice/bundle_contents  |
       | /dataservice/bundle_loggers   |
-      | /dataservice/console_loggers  |
       | /dataservice/console_contents |
+      | /dataservice/console_loggers  |
       | /dataservice/blobs            |
 
   Scenario Outline: Admin user can accesss dataservice routes
     Given the following users exist:
       | login       | password       | roles                 |
       | admin_login | admin_password | admin, member, author |
-    And I login with username: admin_login password: admin_password
+    And I am logged in with the username admin_login
     When I visit the route <route>
     Then I should be on <route>
 
@@ -52,7 +52,7 @@ In NO case should the system allow:
 
     Examples:
       | route                         |
-      | /portal/clazzes               |
+      | /portal/classes               |
       | /portal/courses               |
       | /portal/school_memberships    |
       | /portal/schools               |
@@ -76,13 +76,13 @@ In NO case should the system allow:
     Given the following users exist:
       | login       | password       | roles                 |
       | admin_login | admin_password | admin, member, author |
-    And I login with username: admin_login password: admin_password
+    Given I am logged in with the username admin_login
     When I visit the route <route>
     Then I should be on <route>
 
     Examples:
       | route                         |
-      | /portal/clazzes               |
+      | /portal/classes               |
       | /portal/courses               |
       | /portal/school_memberships    |
       | /portal/schools               |
@@ -114,10 +114,43 @@ In NO case should the system allow:
     Given the following users exist:
       | login       | password       | roles                 |
       | admin_login | admin_password | admin, member, author |
-    And I login with username: admin_login password: admin_password
+    And I am logged in with the username admin_login
     When I visit the route <route>
     Then I should be on <route>
 
     Examples:
       | route  |
       | /users |
+
+  Scenario Outline: Anonymous user can't access report learner routes:
+    Given I am not logged in
+    When I visit the route <route>
+    Then I should be on my home page
+
+    Examples:
+      | route           |
+      | /report/learner |
+
+  Scenario Outline: Admin user can accesss report learner routes
+    Given the following users exist:
+      | login       | password       | roles                 |
+      | admin_login | admin_password | admin, member, author |
+    And I am logged in with the username admin_login
+    When I visit the route <route>
+    Then I should be on <route>
+
+    Examples:
+      | route           |
+      | /report/learner |
+
+  Scenario Outline: Researcher user can accesss report learner routes
+    Given the following users exist:
+      | login            | password            | roles              |
+      | researcher_login | researcher_password | member, researcher |
+    And I am logged in with the username researcher_login
+    When I visit the route <route>
+    Then I should be on <route>
+
+    Examples:
+      | route           |
+      | /report/learner |

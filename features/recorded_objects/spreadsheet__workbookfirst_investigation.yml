@@ -1,1049 +1,1227 @@
---- &id021 !ruby/object:Spreadsheet::Workbook 
-default_format: &id001 !ruby/object:Spreadsheet::Format 
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right_color: :builtin_black
-  rotation: 0
-  top_color: :builtin_black
-  used_merge: 0
-fonts: []
+---  !ruby/object:Spreadsheet::Workbook
+worksheets:
+-  !ruby/object:Spreadsheet::Worksheet
+  default_format: !!null 
+  selected: true
+  dimensions:
+  - 0
+  - 4
+  - 0
+  - 18
+  name: first investigation
+  workbook: 
+  rows:
+  - - !!null 
+    - !!null 
+    - !!null 
+    - !!null 
+    - !!null 
+    - !!null 
+    - !!null 
+    - !!null 
+    - !!null 
+    - !!null 
+    - act 1
+    - !!null 
+    - act 2
+    - !!null 
+    - act 1
+    - act 1
+    - act 2
+    - act 2
+  - - Student ID
+    - Class
+    - School
+    - UserID
+    - Username
+    - Student Name
+    - Teachers
+    - Assessments Completed
+    - ! '% Completed'
+    - Last run
+    - ! 'act 1
 
-formats: 
-- *id001
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+      Assessments Completed'
+    - ! '% Completed'
+    - ! 'act 2
+
+      Assessments Completed'
+    - ! '% Completed'
+    - a
+    - b
+    - c
+    - d
+  - - learner_id
+    - Intro to bugs
+    - Test School
+    - user_id
+    - student_a
+    - Doe, Jack
+    - joe user
+    - 4/4(4)
+    - 100%
+    - never
+    - 2
+    - 100%
+    - 2
+    - 100%
+    - a
+    - a
+    - a
+    - a
+  - - learner_id
+    - Intro to bugs
+    - Test School
+    - user_id
+    - student_b
+    - Smith, Jill
+    - joe user
+    - 3/4(4)
+    - 75%
+    - never
+    - 1
+    - 50%
+    - 2
+    - 100%
+    - not answered
+    - a
+    - b
+    - b
+  columns:
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 0
+    width: 10
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 1
+    width: 25
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 2
+    width: 25
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 3
+    width: 25
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 4
+    width: 25
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 5
+    width: 25
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 6
+    width: 50
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 7
+    width: 4
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: true
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 8
+    width: 4
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 9
+    width: 20
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 10
+    width: 30
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 11
+    width: 4
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 12
+    width: 30
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 13
+    width: 4
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 14
+    width: 12
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 15
+    width: 12
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 16
+    width: 12
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  - !ruby/object:Spreadsheet::Column
+    worksheet: 
+    idx: 17
+    width: 12
+    default_format:  !ruby/object:Spreadsheet::Format
+      font: !ruby/object:Spreadsheet::Font
+        name: Arial
+        color: :text
+        family: :swiss
+      number_format: GENERAL
+      rotation: 0
+      pattern: 0
+      bottom_color: :builtin_black
+      top_color: :builtin_black
+      left_color: :builtin_black
+      right_color: :builtin_black
+      diagonal_color: :builtin_black
+      pattern_fg_color: :border
+      pattern_bg_color: :pattern_bg
+      used_merge: 0
+      left: false
+      right: false
+      top: false
+      bottom: false
+  links: {}
+io: !!null 
+fonts: []
+formats:
+-  !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
     name: Arial
+    color: :text
+    family: :swiss
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id002 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id003 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id005 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id006 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id007 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id008 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id009 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
   left: true
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
   right: false
-  right_color: :builtin_black
-  rotation: 0
   top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id010 !ruby/object:Spreadsheet::Format 
   bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
+    weight: :bold
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
     name: Arial
+    color: :text
+    family: :swiss
+    weight: :bold
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
+    color: :text
+    family: :swiss
+    weight: :bold
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
   left: true
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
   right: false
-  right_color: :builtin_black
-  rotation: 0
   top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
   bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-    weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id011 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-  left: false
+  top_color: :builtin_black
   left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
   right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-    weight: :bold
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
   pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id012 !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
   pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
   used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-    weight: :bold
   left: true
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
   right: false
-  right_color: :builtin_black
-  rotation: 0
   top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
   bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
+    weight: :bold
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
     name: Arial
+    color: :text
+    family: :swiss
+    weight: :bold
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
   left: true
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
   right: false
-  right_color: :builtin_black
-  rotation: 0
   top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
   bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-    weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id014 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-  left: false
+  top_color: :builtin_black
   left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
   right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-    weight: :bold
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
   left: true
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
   right: false
-  right_color: :builtin_black
-  rotation: 0
   top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
   bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
+    weight: :bold
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
     name: Arial
+    color: :text
+    family: :swiss
+    weight: :bold
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
   left: true
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
   right: false
-  right_color: :builtin_black
-  rotation: 0
   top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
   bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-    weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id016 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-  left: false
+  top_color: :builtin_black
   left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
   right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-    weight: :bold
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
   left: true
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
   right: false
-  right_color: :builtin_black
-  rotation: 0
   top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
   bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
+    weight: :bold
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
     name: Arial
+    color: :text
+    family: :swiss
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
+    color: :text
+    family: :swiss
+    weight: :bold
+  number_format: GENERAL
+  rotation: 0
+  pattern: 0
+  bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
   left: true
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
   right: false
-  right_color: :builtin_black
-  rotation: 0
   top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
   bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-    weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-  left: false
+  top_color: :builtin_black
   left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
   right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-    weight: :bold
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
   left: true
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
   right: false
-  right_color: :builtin_black
-  rotation: 0
   top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
   bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: true
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id013 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id015 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id017 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id018 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id019 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
+  top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
   diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
+  used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
+- 
+- !ruby/object:Spreadsheet::Format
+  font: !ruby/object:Spreadsheet::Font
+    name: Arial
     color: :text
     family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- !ruby/object:Spreadsheet::Format 
-  bottom: false
-  bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
     weight: :bold
-  left: false
-  left_color: :builtin_black
   number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
   rotation: 0
-  top: false
-  top_color: :builtin_black
-  used_merge: 0
-- &id020 !ruby/object:Spreadsheet::Format 
-  bottom: false
+  pattern: 0
   bottom_color: :builtin_black
-  diagonal_color: :builtin_black
-  font: !ruby/object:Spreadsheet::Font 
-    color: :text
-    family: :swiss
-    name: Arial
-  left: false
-  left_color: :builtin_black
-  number_format: GENERAL
-  pattern: 0
-  pattern_bg_color: :pattern_bg
-  pattern_fg_color: :border
-  right: false
-  right_color: :builtin_black
-  rotation: 0
-  top: false
   top_color: :builtin_black
+  left_color: :builtin_black
+  right_color: :builtin_black
+  diagonal_color: :builtin_black
+  pattern_fg_color: :border
+  pattern_bg_color: :pattern_bg
   used_merge: 0
+  left: false
+  right: false
+  top: false
+  bottom: false
 io: 
 worksheets: 
 - &id004 !ruby/object:Spreadsheet::Worksheet 
@@ -1196,7 +1374,7 @@ worksheets:
     - Test School
     - user_id
     - student_a
-    - Doe, Jack
+    - Jack Doe
     - joe user
     - 4/4(4)
     - 100%
@@ -1215,7 +1393,7 @@ worksheets:
     - Test School
     - user_id
     - student_b
-    - Smith, Jill
+    - Jill Smith
     - joe user
     - 3/4(4)
     - 75%

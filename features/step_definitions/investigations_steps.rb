@@ -5,6 +5,27 @@ Given /^the following empty investigations exist:$/ do |table|
   end
 end
 
+Given /^the following linked investigations exist:$/ do |table|
+  table.hashes.each do |hash|
+    user = User.find_by_login hash['user']
+    inv = Factory.create(:investigation, hash.merge('user' => user))
+      inv.activities << (Factory :activity, { :user => user })
+      inv.activities[0].sections << (Factory :section, {:user => user})
+      inv.activities[0].sections[0].pages << (Factory :page, {:user => user})
+      open_response = (Factory :open_response, {:user => user})
+      open_response.pages << inv.activities[0].sections[0].pages[0]
+      draw_tool = (Factory :drawing_tool, {:user => user, :background_image_url => "https://lh4.googleusercontent.com/-xcAHK6vd6Pc/Tw24Oful6sI/AAAAAAAAB3Y/iJBgijBzi10/s800/4757765621_6f5be93743_b.jpg"})
+      draw_tool.pages << inv.activities[0].sections[0].pages[0]
+      snapshot_button = (Factory :lab_book_snapshot, {:user => user, :target_element => draw_tool})
+      snapshot_button.pages << inv.activities[0].sections[0].pages[0]
+      prediction_graph = (Factory :data_collector, {:user => user})
+      prediction_graph.pages << inv.activities[0].sections[0].pages[0]
+      displaying_graph = (Factory :data_collector, {:user => user, :prediction_graph_source => prediction_graph})
+      displaying_graph.pages << inv.activities[0].sections[0].pages[0]
+      inv.reload
+  end
+end
+
 Given /^the following simple investigations exist:$/ do |investigation_table|
   investigation_table.hashes.each do |hash|
     user = User.first(:conditions => { :login => hash.delete('user') })
@@ -20,7 +41,23 @@ Given /^the following simple investigations exist:$/ do |investigation_table|
   end
 end
 
-#Table: | investigation | activity | section   | page   | multiple_choices |
+Given /^the author "([^"]*)" created an investigation named "([^"]*)" with text and a open response question$/ do |author, name|
+  user = User.first(:conditions => { :login => author })
+  hash = {:user_id => user.id, :name => name}
+  investigation = Investigation.create(hash)
+  activity = Activity.create(hash)
+  section = Section.create(hash)
+  page = Page.create(hash)
+  section.pages << page
+  activity.sections << section
+  investigation.activities << activity
+  page.add_embeddable(Embeddable::Xhtml.create(hash))
+  page.add_embeddable(Embeddable::OpenResponse.create(hash))
+  page.save
+  investigation.save
+end
+
+#Table: | investigation | activity | activity_teacher_only | section   | page   | multiple_choices |
 Given /^the following investigations with multiple choices exist:$/ do |investigation_table|
   investigation_table.hashes.each do |hash|
     investigation = Investigation.find_or_create_by_name(hash['investigation'])
@@ -28,6 +65,13 @@ Given /^the following investigations with multiple choices exist:$/ do |investig
     investigation.save
     # ITSISU requires descriptions on activities
     activity = Activity.find_or_create_by_name(hash['activity'], :description => hash['activity'])
+    
+    if hash['activity_teacher_only']
+      # Create a teacher only activity if specified
+      activity.teacher_only = (hash['activity_teacher_only'] == 'true')
+      activity.save
+    end
+    
     section = Section.find_or_create_by_name(hash['section'])
     page = Page.find_or_create_by_name(hash['page'])
     mcs = hash['multiple_choices'].split(",").map{ |q| Embeddable::MultipleChoice.find_by_prompt(q.strip) }
@@ -45,6 +89,13 @@ Given /^the following investigations with multiple choices exist:$/ do |investig
   end
 end
 
+Given /^the following semesters exist:$/ do|semesters_table|
+   semesters_table.hashes.each do |hash|
+     Factory.create(:portal_semester, hash)
+   end
+end
+
+
 Given /^the following classes exist:$/ do |table|
   table.hashes.each do |hash|
     if hash['teacher']
@@ -53,7 +104,17 @@ Given /^the following classes exist:$/ do |table|
     else
       teacher = Factory(:teacher)
     end
-    Factory.create(:portal_clazz, hash.merge('teacher' => teacher))
+    hash.merge!('teacher' => teacher)
+    
+    if !(hash['semester'].nil?) then
+      semester = Portal::Semester.find_by_name(hash['semester']);
+      if (semester.nil?) then
+        semester = Factory.create(:portal_semester, :name => hash['semester']);
+      end
+      hash.merge!('semester' => semester);
+    end
+    
+    Factory.create(:portal_clazz, hash)
   end
 end
 
@@ -63,15 +124,38 @@ Given /^the investigation "([^"]*)" is published$/ do |investigation_name|
   investigation.save
 end
 
+Given /^the investigation "([^"]*)" shows scores$/ do |investigation_name|
+  investigation = Investigation.find_by_name investigation_name
+  investigation.show_score = true
+  investigation.save
+end
+
+
 When /^I sort investigations by "([^"]*)"$/ do |sort_str|
   visit "/investigations?sort_order=#{sort_str}"
 end
 
+When /sort order .*should be "([^"]*)"/ do |sort_str|
+  page.should have_selector('select[name="[sort_order]"]')
+  page.should have_selector("option[value='#{sort_str}'][selected='selected']")
+end
+
 When /^I drag the investigation "([^"]*)" to "([^"]*)"$/ do |investigation_name, to|
   investigation = Investigation.find_by_name investigation_name
-  selector = find("#investigation_#{investigation.id}")
+  selector_id = "#investigation_#{investigation.id}"
+  selector = find(selector_id)
   drop = find(to)
-  selector.drag_to(drop)
+  # NP 2011-09 see support/drag_and_drop.rb
+  # TODO: When Selenium issue ( http://bit.ly/q9LHR4 ) closes 
+  # use the actual dragging code which we replaced
+  #
+  # selector.drag_to(drop)
+  fake_drop(selector_id,to)
+end
+
+
+Then /^I should not see the "([^"]*)" checkbox in the list filter$/ do |arg1|
+  page.should_not have_selector("input[name='#{arg1}'][type='checkbox']")
 end
 
 When /^I show offerings count on the investigations page$/ do 
@@ -139,8 +223,15 @@ When /^I drag the investigation "([^"]*)" in the class "(.*)" to "([^"]*)"$/ do 
     :clazz_id => clazz.id
   })
   selector = "#portal__offering_#{offering.id}"
-  find(selector).drag_to(find(to))
+  # NP 2011-09 see support/drag_and_drop.rb
+  # TODO: When Selenium issue ( http://bit.ly/q9LHR4 ) closes 
+  # use the actual dragging code which we replaced
+  #
+  # find(selector).drag_to(find(to))
+  
+  fake_drop(selector,to)
 end
+
 
 Then /^the investigation "([^"]*)" in the class "(.*)" should be active$/ do |investigation_name, class_name|
   clazz = Portal::Clazz.find_by_name(class_name)
@@ -161,15 +252,27 @@ end
 #end
 
 
-Then /^There should be (\d+) investigations displayed$/ do |count|
+Then /^There should be (\d+) (?:investigations|assignables) displayed$/ do |count|
   within("#offering_list") do
     page.all(".runnable").size.should == count.to_i
   end
 end
 
-Then /^"([^"]*)" should not be displayed in the investigations list$/ do |not_expected|
+Then /^"([^"]*)" should not be displayed in the (?:investigations|assignables) list$/ do |not_expected|
   within("#offering_list") do 
     page.should have_no_content(not_expected)
+  end
+end
+
+Then /^the following should (not )?be displayed in the (?:investigations|assignables) list:$/ do |nomatch, table|
+  within('#assignable_list') do
+    table.hashes.each do |hash|
+      if nomatch == "not "
+        page.should have_no_content(hash[:name])
+      else
+        page.should have_content(hash[:name])
+      end
+    end
   end
 end
 
@@ -177,6 +280,10 @@ When /^I click on the next page of results$/ do
   within('.pagination') do
     click_link('Next')
   end
+end
+
+When /^I browse public investigations$/ do
+  visit "/investigations"
 end
 
 When /^I browse draft investigations$/ do
@@ -233,7 +340,33 @@ Then /^the investigation "([^"]*)" should have an offerings count of (\d+)$/ do 
   investigation.offerings_count.should == count.to_i
 end
 
-When /^I duplicate the investigation$/ do
+Then /^the investigation "([^"]*)" should have correct linked prediction graphs/ do |inv_name|
+  copy = Investigation.find_by_name inv_name
+  orig = Investigation.find_by_name inv_name.gsub(/^copy of /, '')
+
+  orig_prediction_graph = orig.pages.first.data_collectors.first
+  copy_prediction_graph = copy.pages.first.data_collectors.first
+
+  orig_dc = orig.pages.first.data_collectors.last
+  copy_dc = copy.pages.first.data_collectors.last
+
+  copy_dc.prediction_graph_source.should == copy_prediction_graph
+end
+
+Then /^the investigation "([^"]*)" should have correct linked snapshot buttons/ do |inv_name|
+  copy = Investigation.find_by_name inv_name
+  orig = Investigation.find_by_name inv_name.gsub(/^copy of /, '')
+
+  orig_draw_tool = orig.pages.first.drawing_tools.first
+  copy_draw_tool = copy.pages.first.drawing_tools.first
+
+  orig_snap = orig.pages.first.lab_book_snapshots.first
+  copy_snap = copy.pages.first.lab_book_snapshots.first
+
+  copy_snap.target_element.should == copy_draw_tool
+end
+
+def show_actions_menu
   # this requires a javascript enabled driver
   # this simulates roughly what happens when the mouse is moved over the plus icon
 
@@ -245,6 +378,109 @@ When /^I duplicate the investigation$/ do
 
   # now that the menu is positioned we can just manually show it
   page.execute_script("$('actions_menu').show()")
+end
+
+When /^I duplicate the investigation$/ do
+  show_actions_menu
   click_link("duplicate")
   page.execute_script("$('actions_menu').hide()")
+
+  # need to verify that the duplication is complete so there are not lingering database interactions
+  page.should have_content('Copied')
+end
+
+Then /^I cannot duplicate the investigation$/ do
+  show_actions_menu
+  page.should have_no_content('duplicate')
+end
+
+And /^the investigation "([^"]*)" with activity "([^"]*)" belongs to domain "([^"]*)" and has grade "([^"]*)"$/ do |investigation_name, activity_name, domain_name, grade_value|
+  @domain = Factory.create( :rigse_domain, { :name => domain_name } )
+  knowledge_statement = Factory.create( :rigse_knowledge_statement, { :domain => @domain } )
+  assessment_target = Factory.create( :rigse_assessment_target, { :knowledge_statement => knowledge_statement })
+  
+  @grade = grade_value
+  grade_span_expection  = Factory.create( :rigse_grade_span_expectation, {:assessment_target => assessment_target, :grade_span => @grade} )
+  
+  investigation = 
+    {
+      :name => investigation_name,
+      :grade_span_expectation => grade_span_expection
+    }
+      
+  @published ||= []
+  @drafts ||= []
+  
+  published = Factory.create(:investigation, investigation)
+  # published.name << " (published) "
+  published.publish!
+  # published.save
+  @published << published.reload
+  Factory.create(:activity, :investigation_id => published.id , :name => activity_name)
+  # draft = Factory.create(:investigation, investigation)
+  # draft.name << " (draft) "
+  # draft.save
+  # @drafts << draft.reload
+  
+end
+
+And /^the investigation "([^"]*)" with activity "([^"]*)" belongs to probe "([^"]*)"$/ do |investigation_name, activity_name, probe_name|
+  
+  domain_name = "random domain"
+  
+  @domain = Factory.create( :rigse_domain, { :name => domain_name } )
+  knowledge_statement = Factory.create( :rigse_knowledge_statement, { :domain => @domain } )
+  assessment_target = Factory.create( :rigse_assessment_target, { :knowledge_statement => knowledge_statement })
+  
+  @grade = "10-11"
+  grade_span_expection  = Factory.create( :rigse_grade_span_expectation, {:assessment_target => assessment_target, :grade_span => @grade} )
+  
+  
+  @probe_type = Probe::ProbeType.find_by_name(probe_name)
+  unless @probe_type
+    @probe_type = Factory.create(:probe_type, :name => probe_name)
+    @probe_type.save!
+  end
+  
+  investigation_hash = {
+    :name => investigation_name,
+    :grade_span_expectation => grade_span_expection
+  }
+  
+  investigation = Factory.create(:investigation, investigation_hash)
+  investigation.publish
+  investigation.save!
+  
+  @probe_activity = Factory.create(:activity, :investigation_id => investigation.id, :name => activity_name)
+  @probe_activity.save!
+  
+  section = Factory.create(:section,:activity_id => @probe_activity.id)
+  section.save!
+  page = Factory.create(:page, :section => section)
+  page.save!
+  
+  page_element = PageElement.new
+  page_element.page = page
+  page_element.embeddable_type = 'Embeddable::DataCollector'
+  page_element.save!
+  
+  embeddable_data_collectors = Factory.create(:data_collector)
+  
+  page_element.embeddable = embeddable_data_collectors
+  page_element.save!
+  
+  embeddable_data_collectors.probe_type = @probe_type
+  embeddable_data_collectors.save!
+  
+end
+
+When /^(?:|I )create investigations "(.+)" before "(.+)" by date$/ do |investigation_name1, investigation_name2|
+  created_at = Date.today
+  ['investigation_name1', 'investigation_name2'].each do |investigation|
+    inv = Investigation.find_or_create_by_name(investigation)
+    created_at = created_at - 1
+    inv.created_at = created_at
+    inv.updated_at = created_at
+    inv.save!
+  end
 end

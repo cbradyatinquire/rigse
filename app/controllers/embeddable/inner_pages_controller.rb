@@ -13,9 +13,10 @@ class Embeddable::InnerPagesController < ApplicationController
   def add_page
     @inner_page = Embeddable::InnerPage.find(params['id'])
     @new_page = Page.create
-    @new_page.user = current_user
+    @new_page.user = current_visitor
     @inner_page << @new_page
-    render :partial => "page", :locals => {:sub_page => @new_page, :inner_page => @inner_page}
+    # render add_page.js.rjs
+    # render :partial => "page", :locals => {:page => @new_page, :inner_page => @inner_page}
   end
   
   def delete_page
@@ -24,9 +25,7 @@ class Embeddable::InnerPagesController < ApplicationController
     last_number = @page.page_number
     last_number = last_number - 1 
     @inner_page.delete_page(@page)
-    last_number = last_number > 1 ? (last_number -1) : 0
-    @page = @inner_page.sub_pages[last_number]
-    render :partial => "page", :locals => {:sub_page => @inner_page.sub_pages[last_number], :inner_page => @inner_page}
+    # render delete_page.js.rjs
   end
 
   def set_page
@@ -35,7 +34,20 @@ class Embeddable::InnerPagesController < ApplicationController
     render :partial => "page", :locals => {:sub_page => @page, :inner_page => @inner_page}
   end
 
-
+  ##
+  ##
+  ##  
+  def sort_pages
+    paramlistname = params[:list_name].nil? ? 'inner_pages_pages_list' : params[:list_name]
+    @inner_page = Embeddable::InnerPage.find(params['id'])
+    @inner_page.sub_pages.each do |page|
+      # puts "page: #{page.id}"
+      # puts "page.id.to_s #{page.id.to_s}"
+      page.position = params[paramlistname].index(page.id.to_s) + 1
+      page.save
+    end 
+    render :nothing => true
+  end
   ##
   ## TODO: This code was copy/pasted from the pages controller.
   ## TODO: It should be DRYd up a bit.
@@ -64,17 +76,17 @@ class Embeddable::InnerPagesController < ApplicationController
       @component = component_class.create
     end
     @component.pages << @page
-    @component.user = current_user
+    @component.user = current_visitor
     @component.save
     @element = @page.element_for(@component)
-    @element.user = current_user
+    @element.user = current_visitor
     @element.save
     # @element.update_investigation_timestamp
     @page.reload
     if params['static']
       render :partial => "static_page", :locals => {:page => @page, :inner_page => @inner_page}
     else
-      render :partial => "page", :locals => {:sub_page => @page, :inner_page => @inner_page}
+      render :partial => "page", :locals => {:page => @page, :inner_page => @inner_page}
     end
   end
 
@@ -86,7 +98,7 @@ class Embeddable::InnerPagesController < ApplicationController
   def show
     @inner_page = Embeddable::InnerPage.find(params[:id])
     @page = @inner_page.children[0]
-    @teacher_mode = params['teacher_mode'] || false
+    @teacher_mode = params['teacher_mode'] || nil
     
     if request.xhr?
       render :partial => 'show', :locals => { :inner_page => @inner_page, :sub_page => @inner_page.sub_pages.first}
@@ -94,8 +106,8 @@ class Embeddable::InnerPagesController < ApplicationController
       respond_to do |format|
         format.html # show.html.haml
         format.otml { render :layout => "layouts/embeddable/inner_page"} # inner_page.otml.haml
-        format.jnlp { render :partial => 'shared/show', :locals => { :runnable => @inner_page , :teacher_mode => false } }
-        format.config { render :partial => 'shared/show', :locals => { :runnable => @inner_page, :session_id => (params[:session] || request.env["rack.session.options"][:id]) , :teacher_mode => false } }
+        format.jnlp { render :partial => 'shared/installer', :locals => { :runnable => @inner_page , :teacher_mode => @teacher_mode } }
+        format.config { render :partial => 'shared/show', :locals => { :runnable => @inner_page, :session_id => (params[:session] || request.env["rack.session.options"][:id]) , :teacher_mode => @teacher_mode } }
         format.dynamic_otml { render :partial => 'shared/show', :locals => {:runnable => @inner_page, :teacher_mode => @teacher_mode} }
         format.xml  { render :inner_page => @inner_page }
       end
@@ -106,7 +118,7 @@ class Embeddable::InnerPagesController < ApplicationController
   # GET /Embeddable/inner_pages/new.xml
   def new
     @inner_page = Embeddable::InnerPage.new
-    @inner_page.user = current_user
+    @inner_page.user = current_visitor
     if request.xhr?
       render :partial => 'remote_form', :locals => { :inner_page => @inner_page }
     else

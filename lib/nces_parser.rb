@@ -1,6 +1,3 @@
-gem 'ar-extensions', '>= 0.9.1'
-require 'ar-extensions'
-
 class NcesParser
   
   def initialize(district_layout_file, school_layout_file, year, states_and_provinces=nil)
@@ -51,7 +48,7 @@ class NcesParser
       puts
       puts "Loading district data:"
       district_data_files.each do |fpath|
-        open(fpath) do |file|
+        open(fpath, "r:iso-8859-1") do |file|
           _parse_file_using_import(file, @district_layout, @district_model)
         end
       end
@@ -59,7 +56,7 @@ class NcesParser
       puts
       puts "Loading school data:"
       school_data_files.each do |fpath|
-        open(fpath) do |file|
+        open(fpath, "r:iso-8859-1") do |file|
           _parse_file_using_import(file, @school_layout, @school_model)
         end
       end
@@ -88,7 +85,7 @@ private
   
   def _get_school_layout(layout_file)
     columns = []
-    open(layout_file) do |file|
+    File.open(layout_file, "r:iso-8859-1") do |file|
       count = 0
       line = ''
       while (line = file.gets) && count < 2 do #fast forward until real data begins
@@ -131,7 +128,7 @@ private
 
   def _get_district_layout(layout_file)
     columns = []
-    open(layout_file) do |file|
+    File.open(layout_file, "r:iso-8859-1") do |file|
       count = 0
       line = ''
       while (line = file.gets) && count < 2 do #fast forward until real data begins
@@ -321,7 +318,7 @@ private
 
   def _get_file_path(migration_file_name)
     timestamp = Time.now.gmtime.strftime('%Y%m%d%H%M%S')
-    File.join(RAILS_ROOT, 'db', 'migrate', "#{timestamp}_#{migration_file_name}")
+    File.join(::Rails.root.to_s, 'db', 'migrate', "#{timestamp}_#{migration_file_name}")
   end
 
   def _getIndexesText

@@ -124,8 +124,44 @@ describe Portal::Clazz do
       # new_clazz.valid?.should == true
     end
     
-    it "should require at least one teacher" do
+    it "should require a non blank class name" do
+      @course = Factory(:portal_course)
+      @start_date = DateTime.parse("2009-01-02")
+      @section_a = "section a"
+      @section_b = "section b"
+      
+      @new_clazz = Factory(:portal_clazz, {
+        :section => @section_a,
+        :start_time => @start_date,
+        :course => @course,
+        :name => 'name',
+        :class_word => 'cw'
+      })
+      
+      @new_clazz.name = ''
+      @new_clazz.valid?.should == false
+      
     end
+    
+    it "should require a non blank class word" do
+      @course = Factory(:portal_course)
+      @start_date = DateTime.parse("2009-01-02")
+      @section_a = "section a"
+      @section_b = "section b"
+      
+      @new_clazz = Factory(:portal_clazz, {
+        :section => @section_a,
+        :start_time => @start_date,
+        :course => @course,
+        :name => 'Name',
+        :class_word => 'cw'
+      })
+      
+      @new_clazz.class_word = ''
+      
+      @new_clazz.valid?.should == false
+    end
+    
   end
 
   describe ".default_class" do
@@ -141,4 +177,212 @@ describe Portal::Clazz do
       Portal::Clazz.default_class.should == default_clazz
     end
   end
+  
+  describe "offerings_including_default_class" do
+    before(:each) do
+      @clazz             = Factory :portal_clazz
+      @offerings         = []
+      @default_offerings = []
+      1.upto(10) do |i|
+        @offerings << mock(:offering,
+                           :id => i,
+                           :runnable_id => i, 
+                           :runnable_type => 'bogus', 
+                           :default => false)
+
+        @default_offerings << mock(:offering,
+                                   :id => i,
+                                   :runnable_id => i, 
+                                   :runnable_type => 'bogus', 
+                                   :default => true)
+      end
+      @clazz.stub!(:active_offerings => @offerings)
+    end
+    
+    describe "when there are no default activities" do
+      before(:each) do
+        def_offerings = []
+        Portal::Offering.stub!(:find_all_by_runnable_id_and_runnable_type_and_default_offering).and_return { |a,b,c|
+          def_offerings.select {|o| o.runnable_id == a}}
+      end
+      it "should have 10 offerings, zero default offerings" do
+        @clazz.offerings_including_default_class.size.should == 10
+        @clazz.offerings_including_default_class.select{ |i| i.default == true}.size.should == 0
+      end
+    end
+
+    describe "when there is 100% overlap with default activities" do
+      before(:each) do
+        def_offerings = @default_offerings
+        Portal::Offering.stub!(:find_all_by_runnable_id_and_runnable_type_and_default_offering).and_return { |a,b,c|
+          def_offerings.select {|o| o.runnable_id == a}}
+      end
+      it "should have 10 offerings, 10 default offerings" do
+        @clazz.offerings_including_default_class.size.should == 10
+        @clazz.offerings_including_default_class.select{ |i| i.default == true}.size.should == 10
+      end
+    end
+    
+    describe "the first half are default activities" do
+      before(:each) do
+        def_offerings = @default_offerings[0...5]
+        Portal::Offering.stub!(:find_all_by_runnable_id_and_runnable_type_and_default_offering).and_return { |a,b,c|
+          def_offerings.select {|o| o.runnable_id == a}}
+      end
+      it "should have 10 offerings, 5 default offerings" do
+        @clazz.offerings_including_default_class.size.should == 10
+        @clazz.offerings_including_default_class.select{ |i| i.default == true}.size.should == 5
+      end
+    end
+
+    describe "the first half are default activities" do
+      before(:each) do
+        def_offerings = @default_offerings[5...10]
+        Portal::Offering.stub!(:find_all_by_runnable_id_and_runnable_type_and_default_offering).and_return { |a,b,c|
+          def_offerings.select {|o| o.runnable_id == a}}
+      end
+      it "should have 10 offerings, 5 default offerings" do
+        @clazz.offerings_including_default_class.size.should == 10
+        @clazz.offerings_including_default_class.select{ |i| i.default == true}.size.should == 5
+      end
+    end
+
+    describe "every other activity is the default default" do
+      before(:each) do
+        def_offerings = @default_offerings.select { |i| i.runnable_id % 2 == 0 }
+        Portal::Offering.stub!(:find_all_by_runnable_id_and_runnable_type_and_default_offering).and_return { |a,b,c|
+          def_offerings.select {|o| o.runnable_id == a}}
+      end
+      it "should have 10 offerings, 5 default offerings" do
+        @clazz.offerings_including_default_class.size.should == 10
+        @clazz.offerings_including_default_class.select{ |i| i.default == true}.size.should == 5
+      end
+    end
+  end
+  
+  # def offerings_with_default_classes(user=nil)
+  #   return self.offerings_including_default_class unless (user && user.portal_student && self.default_class)
+  #   real_offerings = user.portal_student.clazzes.map{ |c| c.active_offerings }.flatten.uniq.compact
+  #   default_offerings = self.active_offerings.reject { |o| real_offerings.include?(o) }
+  #   default_offerings 
+  # end
+  describe "offerings_with_default_classes" do
+    before(:each) do
+      @clazz = Factory :portal_clazz, :default_class => false
+    end
+    describe "called without a user" do
+      it "should fall back to offerings_including_default_class" do
+        @clazz.should_receive(:offerings_including_default_class).and_return(true)
+        @clazz.offerings_with_default_classes.should == true
+      end
+    end
+    describe "called without a student" do
+      before(:each) do
+        @user = mock(:user, :portal_student => nil)
+      end
+      it "should fall back to offerings_including_default_class" do
+        @clazz.should_receive(:offerings_including_default_class).and_return(true)
+        @clazz.offerings_with_default_classes(@user).should == true
+      end
+    end
+    describe "when not the default class" do
+      before(:each) do
+        @offerings = [mock(:offering),mock(:offering)]
+        @clazzes = [mock(:clazz, :offerings => @offerings)]
+        @student = mock(:student, :clazzes => @clazzes)
+        @user = mock(:user, :portal_student => @student)
+      end
+      it "should fall back to offerings_including_default_class" do
+        @clazz.should_receive(:default_class).and_return(false)
+        @clazz.should_receive(:offerings_including_default_class).and_return(true)
+        @clazz.offerings_with_default_classes(@user).should == true
+      end
+    end
+    describe "when the default class, and when there is a user" do
+      before(:each) do
+        @offerings = []
+        # these offerings belong to the "real" class
+        0.upto(2) do |i|
+          @offerings << mock(:offering, :id => i, :runnable_type => 'fake', :runnable => i, :runnable_id => i)
+        end
+        @student_offerings = @offerings[0..2]
+
+        # these offerings belong to the default class but have the same runnable as the first 2 student offerings
+        3.upto 4 do |i|
+          @offerings << mock(:offering, :id => i, :runnable_type => 'fake', :runnable => i-3, :runnable_id => i-3)          
+        end
+        @default_offerings_with_same_runnable_as_a_student_offering = @offerings[3..4]
+                
+        # these offerings belong only to the default class
+        5.upto 8 do |i|
+          @offerings << mock(:offering, :id => i, :runnable_type => 'fake', :runnable => i, :runnable_id => i)           
+        end
+        @default_offerings_with_unique_runnable = @offerings[5..8]
+        @default_offerings = @offerings[3..8]
+        
+        @clazzes = [mock(:clazz, :active_offerings => @student_offerings, :default_class => false),@clazz]
+        @student = mock(:student, :clazzes => @clazzes)
+        @user = mock(:user, :portal_student => @student)
+        @clazz.stub!(:default_class => true)
+        @clazz.stub!(:active_offerings => @default_offerings)
+      end
+      it "should not fall back to offerings_including_default_class" do
+        @clazz.should_not_receive(:offerings_including_default_class).and_return(true)
+        @clazz.offerings_with_default_classes(@user).should_not be_nil
+      end
+      it "should not contain the offerings which use the same runnable as a student offering" do
+        default_class_offerings = @clazz.offerings_with_default_classes(@user)
+        @default_offerings_with_same_runnable_as_a_student_offering.each do |o|
+          default_class_offerings.should_not include(o)
+        end
+      end
+      it "should contain exactly the offerings which do not use the same runnable as a student offering" do
+        default_class_offerings = @clazz.offerings_with_default_classes(@user)
+        default_class_offerings.should have(@default_offerings_with_unique_runnable.length).offerings
+        @default_offerings_with_unique_runnable.each do |o|
+          default_class_offerings.should include(o)
+        end
+      end
+    end
+
+  end
+
+  describe "formatting methods" do
+    before :each do
+      @clazz = Factory :portal_clazz
+      @bob   = mock_model(Portal::Teacher, :name => "bob")
+      @joan  = mock_model(Portal::Teacher, :name => "joan")
+    end
+    
+    context "with no teachers" do
+      subject do
+        @clazz.stub! :teachers => []
+        @clazz
+      end
+      its(:teachers_label) {should == "Teacher"      }
+      its(:teachers_listing){should == "no teachers" }
+    end
+
+    context "With one teacher" do
+      subject do
+        @clazz.stub! :teachers => [@joan]
+        @clazz
+      end
+      its(:teachers_label)  {should == "Teacher"         }
+      its(:teachers_listing){should match @joan.name      }
+      its(:teachers_listing){should_not match @bob.name }
+    end
+    
+    context "With two teachers" do
+      subject do
+        @clazz.stub! :teachers => [@bob,@joan]
+        @clazz
+      end
+      its(:teachers_label)  {should == "Teachers"    }
+      its(:teachers_listing){should match @bob.name  }
+      its(:teachers_listing){should match @joan.name }
+    end
+  end
+
 end
+

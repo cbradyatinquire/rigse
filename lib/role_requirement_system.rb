@@ -4,19 +4,23 @@
 # See RoleSecurityClassMethods for some methods it provides.
 module RoleRequirementSystem
   def self.included(klass)
-    klass.send :class_inheritable_array, :role_requirements
+    # previous this was setup as an inheritable array, but that would mean that the array would be partially
+    # shared down the class hierarchy, I'm guessing that role_requirements shouldn't be shared like that
+    # so instead this is adding an accessor to the singleton of the klass, which nicely works out to keep
+    # all of the requirment separate down the chain of inheritance it actually looks like this isn't used
+    class << klass
+      attr_accessor :role_requirements
+    end
     klass.send :include, RoleSecurityInstanceMethods
     klass.send :extend, RoleSecurityClassMethods
     klass.send :helper_method, :url_options_authenticate? 
-    
-    klass.send :role_requirements=, []
-    
+
   end
   
   module RoleSecurityClassMethods
     
     def reset_role_requirements!
-      self.role_requirements.clear
+      self.role_requirements.clear if self.role_requirements
     end
     
     # Add this to the top of your controller to require a role in order to access it.
@@ -24,7 +28,7 @@ module RoleRequirementSystem
     # 
     #    require_role "contractor"
     #    require_role "admin", :only => :destroy # don't allow contractors to destroy
-    #    require_role "admin", :only => :update, :unless => "current_user.authorized_for_listing?(params[:id]) "
+    #    require_role "admin", :only => :update, :unless => "current_visitor.authorized_for_listing?(params[:id]) "
     #
     # Valid options
     #
@@ -118,7 +122,7 @@ module RoleRequirementSystem
     end
     
     def check_roles       
-      return access_denied unless self.class.user_authorized_for?(current_user, params, binding)
+      return access_denied unless self.class.user_authorized_for?(current_visitor, params, binding)
       
       true
     end
@@ -136,7 +140,7 @@ module RoleRequirementSystem
       else
         klass = self.class
       end
-      klass.user_authorized_for?(current_user, params, binding)
+      klass.user_authorized_for?(current_visitor, params, binding)
     end
   end
 end

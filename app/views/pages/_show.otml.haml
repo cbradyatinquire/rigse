@@ -1,4 +1,4 @@
-- content_for("page_#{dom_id_for(page)}".to_sym) do
+- content_for dom_id_for(page, :page) do
   %OTCompoundDoc{ :name => page.name }
     %bodyText
       - if teacher_mode && should_show_teacher_notes?(page)
@@ -8,6 +8,13 @@
 
 - content_for(:library) do
   - page.page_elements.each do |element|
+    - unless element && element.embeddable
+      - msg = "Nil embeddable in page #{page.id}: #{page.name}"
+      - if page.section
+        - msg << ", section: #{page.section.name}"
+        - msg << ", activity: #{page.section.activity.name}" if page.section.activity
+      - logger.error msg
+      - next
     = render :partial => "pages/element_container", :locals => { :teacher_mode => teacher_mode, :element => element, :component => element.embeddable, :page => @page }
 
   %OTCompoundDoc{ :local_id => ot_local_id_for(page, :tab_content), :name => page.name }
@@ -15,13 +22,15 @@
       - if (for_teacher_only?(page) && teacher_mode) || (!for_teacher_only?(page))
         #content{ :class => for_teacher_only?(page) ? 'teacher_mode' : nil}
           - if page.section
-            %p.page_title= "#{h(page.section.name)}  (#{h(page.name)})"
+            %p.page_title= "#{h(page.section.name)}  (#{h(page.name)})".html_safe
 
           - page.page_elements.each do |element|
+            - next unless element && element.embeddable
             .element
               -# allow embeddables to control how they are referenced from the document
-              - if object_reference = yield("element_#{ot_dom_id_for(element.embeddable)}".to_sym)
-                = object_reference
+              - embeddable_doc_ref = ot_dom_id_for(element.embeddable, :element)
+              - if content_for? embeddable_doc_ref
+                = content_for embeddable_doc_ref
               - else
                 %object{ :refid => ot_refid_for(element.embeddable) }/
 
@@ -32,7 +41,7 @@
         - if should_show_teacher_note? page, :investigation
           %tr{:valign=>"top"}
             %td{:width=>"25%"}
-              %h3= "#{top_level_container_name.humanize.pluralize} notes:"
+              %h3= "#{top_level_container_name.humanize.pluralize} notes:".html_safe
             %td
               .activity_teacher_note= page.section.investigation.teacher_note_otml
 

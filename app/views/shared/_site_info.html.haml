@@ -4,12 +4,12 @@
   %br
   %small
     type:
-    = db_info[RAILS_ENV]['adapter']
+    = db_info[::Rails.env]['adapter']
   %br
   %small
     name:
-    = db_info[RAILS_ENV]['database']
-  - if host = db_info[RAILS_ENV]['host']
+    = db_info[::Rails.env]['database']
+  - if host = db_info[::Rails.env]['host']
     %br
     %small
       host:
@@ -20,9 +20,9 @@
   %small
     = request.subdomains.join(', ')
 %p
-  RAILS_ROOT:
+  Rails.root:
   %br
   %small
-    = RAILS_ROOT
+    = Rails.root
 %p
   = display_repo_info

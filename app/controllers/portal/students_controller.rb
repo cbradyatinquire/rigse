@@ -1,6 +1,8 @@
 class Portal::StudentsController < ApplicationController
-
   include RestrictedPortalController
+
+  before_filter :manager_or_researcher, :only => [ :show ]
+
   public
 
   def index
@@ -56,7 +58,7 @@ class Portal::StudentsController < ApplicationController
   # If everything gets created or referenced correctly a Portal::StudentClass is generated.
   #
   # FIXME there is a lot of logic in here that uses :class_word to indicate this is a student
-  # registering themselves.  That makes it confusing and things break when the clazz_word is 
+  # registering themselves.  That makes it confusing and things break when the clazz_word is
   # not used when registering students.  It is also unsafe because a student could just signup
   # to a class if they new the class id
   #
@@ -73,7 +75,7 @@ class Portal::StudentsController < ApplicationController
       errors << [:class_word, "must be a valid class word."]
     end
     # Only do this check if the student is signing themselves up. Everything else will work silently if these values are not set.
-    if current_project.use_student_security_questions && params[:clazz] &&params[:clazz][:class_word]
+    if current_settings.use_student_security_questions && params[:clazz] &&params[:clazz][:class_word]
       @security_questions = SecurityQuestion.make_questions_from_hash_and_user(params[:security_questions])
       sq_errors = SecurityQuestion.errors_for_questions_list!(@security_questions)
       if sq_errors && sq_errors.size > 0
@@ -81,6 +83,14 @@ class Portal::StudentsController < ApplicationController
       end
     end
 
+    # Only do this check if the student is signing themselves up.
+    if current_settings.require_user_consent? && params[:clazz] && params[:clazz][:class_word]
+      if params[:user][:of_consenting_age]
+        @user.asked_age = true
+      else
+        errors << [:you, "must specify your age."]
+      end
+    end
     # TODO: This creation logic should be reorganized a la Portal::Teachers, so orphan Users don't get
     # created and fill up the usernamespace if there's an error later in the process. -- Cantina-CMH 6/17/10
 
@@ -89,48 +99,90 @@ class Portal::StudentsController < ApplicationController
     if @user.valid? && errors.length < 1
       # temporarily disable sending email notifications for state change events
       @user.skip_notifications = true
-      @user.register!
+      @user.save!
       user_created = @user.save
       if user_created
-        @user.activate!
-        if current_project.allow_default_class
+        @user.confirm!
+        if current_settings.allow_default_class || @grade_level.nil?
           @portal_student = Portal::Student.create(:user_id => @user.id)
         else
           @portal_student = Portal::Student.create(:user_id => @user.id, :grade_level_id => @grade_level.id)
         end
       end
     end
-    respond_to do |format|
-      if user_created && @portal_clazz && @portal_student #&& @grade_level
-        @portal_student.student_clazzes.create!(:clazz_id => @portal_clazz.id, :student_id => @portal_student.id, :start_time => Time.now)
 
-        if params[:clazz] && params[:clazz][:class_word]
-          # Attach the security questions here. We don't want to bother if there was a problem elsewhere.
-          @user.update_security_questions!(@security_questions) if current_project.use_student_security_questions
+    if request.xhr?
+      response_value = {
+        :success => true,
+        :error_msg => nil
+      }
 
-          format.html { render 'signup_success' }
+        if user_created && @portal_clazz && @portal_student
+          @portal_student.student_clazzes.create!(:clazz_id => @portal_clazz.id, :student_id => @portal_student.id, :start_time => Time.now)
+          @portal_clazz.reload
+          render :update do |page|
+            add_student_url = new_portal_student_path(:clazz_id => @portal_clazz.id)
+            success_msg = "<div style='padding:5px;font-size:15px'>You have successfully registered <b>#{@user.name}</b> with the username <b>#{@user.login}</b>.</div>" +
+                          "<br/><br/><div style='padding:5px;text-align:center'><table cellpadding='0' cellspacing='0' border='0' width='100%'><tr><td>" +
+                          "<input type='button' class='pie' onclick='get_Add_Register_Student_Popup(\\\"#{add_student_url}\\\")' value='Add Another' />&nbsp;&nbsp;&nbsp;" +
+                          "<input type='button' class='pie' onclick='close_popup()' value='Close' />" +
+                          "</td></tr></table></div>"
+            page << "close_popup();"
+            page << "student_list_modal = new Lightbox({ theme:\"lightbox\", width:400, height:350,content:\"#{success_msg}\",title:\"Add and Register New Student\"});"
+            page << "if ($('students_listing')){"
+            page.replace_html 'students_listing', :partial => 'portal/students/table_for_clazz', :locals => {:portal_clazz => @portal_clazz}
+            page << "}"
+            page << "if ($('oClassStudentCount')){"
+            page.replace_html 'oClassStudentCount', @portal_clazz.students.length.to_s
+            page << "}"
+            page.replace 'student_add_dropdown', student_add_dropdown(@portal_clazz)
+          end
         else
-          flash[:info] = <<-EOF
+          @portal_student = Portal::Student.new unless @portal_student
+          errors.each do |e|
+            @user.errors.add(e[0],e[1]);
+          end
+          @portal_student.errors.each do |e|
+            @user.errors.add(e[0],e[1]);
+          end
+          response_value[:success] = false
+          response_value[:error_msg] = @user.errors
+          render :json => response_value
+          return
+        end
+    else
+      respond_to do |format|
+        if user_created && @portal_clazz && @portal_student #&& @grade_level
+          @portal_student.student_clazzes.create!(:clazz_id => @portal_clazz.id, :student_id => @portal_student.id, :start_time => Time.now)
+
+          if params[:clazz] && params[:clazz][:class_word]
+            # Attach the security questions here. We don't want to bother if there was a problem elsewhere.
+            @user.update_security_questions!(@security_questions) if current_settings.use_student_security_questions
+            format.html { redirect_to thanks_for_sign_up_url(:type=>"student",:login=>"#{@portal_student.user.login}") }
+          else
+            msg = <<-EOF
             You have successfully registered #{@user.name} with the username <span class="big">#{@user.login}</span>.
             <br/>
-          EOF
-          format.html { redirect_to(@portal_clazz) }
-        end
-      else  # something didn't get created or referenced correctly
-        @portal_student = Portal::Student.new unless @portal_student
-        @user = User.new unless @user
-        errors.each do |e|
-          @user.errors.add(e[0],e[1]);
-        end
-        if params[:clazz] && params[:clazz][:class_word]
-          if current_project.use_student_security_questions
-            @security_questions = SecurityQuestion.fill_array(@security_questions)
+            EOF
+            flash[:info] = msg.html_safe
+            format.html { redirect_to(@portal_clazz) }
           end
-          format.html { render :action => "signup" }
-          format.xml  { render :xml => @portal_student.errors, :status => :unprocessable_entity }
-        else
-          format.html { render :action => "new" }
-          format.xml  { render :xml => @portal_student.errors, :status => :unprocessable_entity }
+        else  # something didn't get created or referenced correctly
+          @portal_student = Portal::Student.new unless @portal_student
+          @user = User.new unless @user
+          errors.each do |e|
+            @user.errors.add(e[0],e[1]);
+          end
+          if params[:clazz] && params[:clazz][:class_word]
+            if current_settings.use_student_security_questions
+              @security_questions = SecurityQuestion.fill_array(@security_questions)
+            end
+            format.html { render :action => "signup" }
+            format.xml  { render :xml => @portal_student.errors, :status => :unprocessable_entity }
+          else
+            format.html { render :action => "new" }
+            format.xml  { render :xml => @portal_student.errors, :status => :unprocessable_entity }
+          end
         end
       end
     end
@@ -194,6 +246,22 @@ class Portal::StudentsController < ApplicationController
     end
   end
 
+  def ask_consent
+    @portal_student = Portal::Student.find(params[:id])
+    @user = @portal_student.user
+  end
+
+  def update_consent
+    @portal_student = Portal::Student.find(params[:id])
+    @portal_student.user.asked_age = true;
+    @portal_student.save
+    if @portal_student.user.update_attributes(params[:user])
+      redirect_to home_path
+    else
+      render :action => "ask_consent"
+    end
+  end
+
   # GET /portal_students/signup
   # GET /portal_students/signup.xml
   def signup
@@ -201,7 +269,7 @@ class Portal::StudentsController < ApplicationController
     @security_questions = SecurityQuestion.fill_array
     @user = User.new
     respond_to do |format|
-      format.html # new.html.erb
+      format.html
       format.xml  { render :xml => @portal_student }
     end
   end
@@ -210,15 +278,15 @@ class Portal::StudentsController < ApplicationController
     if request.post?
       @portal_clazz = find_clazz_from_params
       class_word = params[:clazz][:class_word]
-      if @portal_clazz && class_word && ! current_user.anonymous?
-        @student = current_user.portal_student
+      if @portal_clazz && class_word && ! current_visitor.anonymous?
+        @student = current_visitor.portal_student
         if ! @student
           @grade_level = find_grade_level_from_params
-          @student = Portal::Student.create(:user_id => current_user.id, :grade_level_id => @grade_level.id)
+          @student = Portal::Student.create(:user_id => current_visitor.id, :grade_level_id => @grade_level.id)
         end
         @student.process_class_word(class_word)
       else
-        if current_user.anonymous?
+        if current_visitor.anonymous?
           flash[:error] = "You must be logged in to sign up for a class!"
         else
           flash[:error] = "The class word you provided was not valid! Please check with your teacher to ensure you have the correct word."
@@ -227,7 +295,7 @@ class Portal::StudentsController < ApplicationController
       respond_to do |format|
         if (@portal_clazz && @student)
           flash[:notice] = 'Successfully registered for class.'
-          format.html { redirect_to(@student) }
+          format.html { redirect_to home_path }
         else
           @student = Portal::Student.new
           format.html { render :action => 'register' }

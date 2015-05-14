@@ -1,33 +1,38 @@
-require File.expand_path('../../../spec_helper', __FILE__)
+require "spec_helper"
 
 describe Admin::ProjectsController do
   describe "routing" do
-    it "recognizes and generates #index" do
-      { :get => "admin/projects" }.should route_to(:controller => "admin/projects", :action => "index")
+
+    it "routes to #landing_page" do
+      expect(get("/project-slug")).to route_to("admin/projects#landing_page", :landing_page_slug => "project-slug")
     end
 
-    it "recognizes and generates #new" do
-      { :get => "admin/projects/new" }.should route_to(:controller => "admin/projects", :action => "new")
+    it "routes to #index" do
+     expect(get("/admin/projects")).to route_to("admin/projects#index")
     end
 
-    it "recognizes and generates #show" do
-      { :get => "admin/projects/1" }.should route_to(:controller => "admin/projects", :action => "show", :id => "1")
+    it "routes to #new" do
+      expect(get("/admin/projects/new")).to route_to("admin/projects#new")
     end
 
-    it "recognizes and generates #edit" do
-      { :get => "admin/projects/1/edit" }.should route_to(:controller => "admin/projects", :action => "edit", :id => "1")
+    it "routes to #show" do
+      expect(get("/admin/projects/1")).to route_to("admin/projects#show", :id => "1")
     end
 
-    it "recognizes and generates #create" do
-      { :post => "admin/projects" }.should route_to(:controller => "admin/projects", :action => "create") 
+    it "routes to #edit" do
+      expect(get("/admin/projects/1/edit")).to route_to("admin/projects#edit", :id => "1")
     end
 
-    it "recognizes and generates #update" do
-      { :put => "admin/projects/1" }.should route_to(:controller => "admin/projects", :action => "update", :id => "1") 
+    it "routes to #create" do
+      expect(post("/admin/projects")).to route_to("admin/projects#create")
     end
 
-    it "recognizes and generates #destroy" do
-      { :delete => "admin/projects/1" }.should route_to(:controller => "admin/projects", :action => "destroy", :id => "1") 
+    it "routes to #update" do
+      expect(put("/admin/projects/1")).to route_to("admin/projects#update", :id => "1")
+    end
+
+    it "routes to #destroy" do
+      expect(delete("/admin/projects/1")).to route_to("admin/projects#destroy", :id => "1")
     end
   end
 end

@@ -18,13 +18,18 @@ javascripts:
   - report_filter
   - pagination
   - workgroup
-  
+  - chosen.proto
+  - pt_event_simulate
+  - prototype-ui/prototype-ui
 stylesheets: 
+- print:
+  - print
 - base: 
   - app
   - accordion
   - window/window
   - window/rites
+  - window/lightbox
   - live_validation
   - action_menu_tab
   - notes
@@ -32,18 +37,21 @@ stylesheets:
   - data_table
   - reports
   - workgroup
-
+  - chosen
+  - site_notice
 - default:
   - app
   - accordion
   - window/window
   - window/rites
+  - window/lightbox
   - live_validation
   - action_menu_tab
   - notes
   - drop_down
   - data_table
   - reports
+  - chosen
   
 - rites:
   - app
@@ -51,13 +59,19 @@ stylesheets:
   - please_wait
   - window/window
   - window/rites
+  - window/lightbox
   - live_validation
-  - accordion
-  - notes
   - action_menu_tab
+  - notes
   - drop_down
   - data_table
   - reports
+  - workgroup
+  - chosen
+  - classes_left_pane
+  - instructional_materials
+  - site_notice
+  - search_materials
   
 - investigations:
   - themes/investigations/investigations
@@ -66,6 +80,7 @@ stylesheets:
   - themes/investigations/accordion
   - window/window
   - window/rites
+  - window/lightbox
   - live_validation
   - notes
   - data_table
@@ -77,6 +92,7 @@ stylesheets:
   - themes/itsisu/drop_down
   - themes/itsisu/accordion
   - window/window
+  - window/lightbox
   - window/itsisu
   - live_validation
   - notes
@@ -84,16 +100,22 @@ stylesheets:
   - reports
 
 - smartgraphs:
-  - themes/smartgraphs/smartgraphs
-  - themes/smartgraphs/action_menu_tab
-  - themes/smartgraphs/drop_down
-  - themes/smartgraphs/accordion
+  - app
+  - accordion
   - window/window
+  - window/lightbox
   - window/rites
   - live_validation
+  - action_menu_tab
   - notes
+  - drop_down
   - data_table
   - reports
+  - workgroup
+  - chosen
+  - site_notice
+  - classes_left_pane
+  - instructional_materials
 
 - sglight:
   - themes/sglight/sglight
@@ -102,6 +124,7 @@ stylesheets:
   - themes/sglight/accordion
   - window/window
   - window/rites
+  - window/lightbox
   - live_validation
   - notes
   - data_table
@@ -113,44 +136,66 @@ stylesheets:
   - please_wait
   - window/window
   - window/rites
+  - window/lightbox
   - live_validation
-  - accordion
-  - notes
   - action_menu_tab
+  - notes
   - drop_down
   - data_table
   - reports
+  - workgroup
+  - chosen
+  - classes_left_pane
+  - instructional_materials
+  - site_notice
+  - search_materials
 
 - has:
   - app
   - accordion
   - please_wait
+  - window/window
+  - window/rites
+  - window/lightbox
   - live_validation
-  - accordion
-  - notes
   - action_menu_tab
+  - notes
   - drop_down
   - data_table
   - reports
   - workgroup
+  - chosen
+  - classes_left_pane
+  - instructional_materials
+  - site_notice
+  - search_materials
 
 - xproject:
   - app
   - accordion
+  - please_wait
   - window/window
   - window/rites
+  - window/lightbox
   - live_validation
   - action_menu_tab
   - notes
   - drop_down
   - data_table
   - reports
-
+  - workgroup
+  - chosen
+  - classes_left_pane
+  - instructional_materials
+  - site_notice
+  - search_materials
+  
 - genomedynamics:
   - app
   - accordion
   - window/window
   - window/rites
+  - window/lightbox
   - live_validation
   - action_menu_tab
   - notes
@@ -158,21 +203,64 @@ stylesheets:
   - data_table
   - reports
   - themes/genomedynamics/genomedynamics
-  
+
 - geniverse:
   - app
   - accordion
+  - please_wait
   - window/window
   - window/rites
+  - window/lightbox
   - live_validation
-  - accordion
-  - notes
   - action_menu_tab
+  - notes
   - drop_down
   - data_table
   - reports
-  - themes/geniverse/geniverse
-  - themes/geniverse/action_menu_tab
-  - themes/geniverse/drop_down
-  - themes/geniverse/accordion
+  - workgroup
+  - chosen
+  - classes_left_pane
+  - instructional_materials
+  - site_notice
+  - search_materials
+
+- genigames:
+  - app
+  - accordion
+  - please_wait
+  - window/window
+  - window/rites
+  - window/lightbox
+  - live_validation
+  - action_menu_tab
+  - notes
+  - drop_down
+  - data_table
+  - reports
+  - workgroup
+  - chosen
+  - classes_left_pane
+  - instructional_materials
+  - site_notice
+  - search_materials
+
+- interactions:
+  - app
+  - accordion
+  - please_wait
+  - window/window
+  - window/rites
+  - window/lightbox
+  - live_validation
+  - action_menu_tab
+  - notes
+  - drop_down
+  - data_table
+  - reports
+  - workgroup
+  - chosen
+  - classes_left_pane
+  - instructional_materials
+  - site_notice
+  - search_materials
 

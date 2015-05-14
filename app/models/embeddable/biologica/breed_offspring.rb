@@ -1,5 +1,5 @@
 class Embeddable::Biologica::BreedOffspring < ActiveRecord::Base
-  set_table_name "embeddable_biologica_breed_offsprings"
+  self.table_name = "embeddable_biologica_breed_offsprings"
 
   
   belongs_to :user
@@ -37,9 +37,6 @@ class Embeddable::Biologica::BreedOffspring < ActiveRecord::Base
   
   send_update_events_to :investigations
   
-  def self.display_name
-    "Biologica Breed Offspring"
-  end
 
   def investigations
     invs = []

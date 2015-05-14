@@ -1,5 +1,5 @@
 class Embeddable::Smartgraph::RangeQuestion < ActiveRecord::Base
-  set_table_name "embeddable_smartgraph_range_questions"
+  self.table_name = "embeddable_smartgraph_range_questions"
 
 
   
@@ -59,9 +59,6 @@ class Embeddable::Smartgraph::RangeQuestion < ActiveRecord::Base
   default_value_for :multiple_wrong_answers_response_text, "I'm sorry, that's not correct. Please try again!"
   default_value_for :multiple_wrong_highlight, false
 
-  def self.display_name
-    "Smartgraph Range Question"
-  end
 
   def script_text
     script = <<EOF

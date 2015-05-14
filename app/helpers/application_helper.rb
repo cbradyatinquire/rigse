@@ -1,10 +1,8 @@
-include OtmlHelper
-include JnlpHelper
-include Clipboard
-
 module ApplicationHelper
-  def current_project
-    @_project ||= Admin::Project.default_project
+  include Clipboard
+
+  def current_settings
+    @_settings ||= Admin::Settings.default_settings
   end
 
   def top_level_container_name
@@ -51,28 +49,19 @@ module ApplicationHelper
   end
 
   def display_system_info
-    list1 =
-      content_tag('ul', :class => 'tiny menu_h') do
-        list = ''
-        # grit (git gem) throws strange errors when running rspec tests
-        # using command-R in textmate, so here's the hack to fix
-        # that for now
-        unless RUNNING_TESTS
-          git_repo_info.collect { |info| list << content_tag('li') { info } }
-          if USING_JNLPS
-            list << content_tag('li') { '|' }
-            maven_jnlp_info.collect { |info| list << content_tag('li') { info } }
-          end
-        end
-        list
-      end
-    # list2 =
-    #   content_tag('ul', :class => 'tiny menu_h') do
-    #     list = ''
-    #     maven_jnlp_info.collect { |info| list << content_tag('li') { info } }
-    #     list
-    #   end
-    # "#{list1}\n<br />#{list2}"
+    commit = git_repo_info rescue {:branch => "<b>Error loading git info!</b>"}
+    jnlp = current_settings.jnlp_url || "#"
+    info = <<-HEREDOC
+<span class="tiny menu_h">
+  #{commit[:branch]}
+  | <a href="#{commit[:href]}">#{commit[:short_id]}</a>
+  | #{commit[:author]}
+  | #{commit[:date]}
+  | #{commit[:short_message]}
+  | <a href="#{jnlp}">#{jnlp}</a>
+</span>
+    HEREDOC
+    info.html_safe
   end
 
   def git_repo_info
@@ -100,34 +89,18 @@ module ApplicationHelper
     if head
       branch = head.name
       last_commit = repo.commits(branch).first
-      message = last_commit.message
-      link = "<a title='#{message}' href='http://github.com/stepheneb/rigse/commit/#{last_commit.id}'>#{truncate(last_commit.id, :length => 16)}</a>"
-      name = last_commit.author.name
-      date = last_commit.authored_date.strftime('%a %b %d %H:%M:%S')
-      short_message = truncate(last_commit.message, :length => 54)
-      [branch, link, name, date, short_message]
+      {
+        :branch => branch,
+        :last_commit => repo.commits(branch).first,
+        :short_message => truncate(last_commit.message, :length => 54),
+        :href => "http://github.com/concord-consortium/rigse/commit/#{last_commit.id}",
+        :short_id => truncate(last_commit.id, :length => 16),
+        :name => last_commit.author.name,
+        :date => last_commit.authored_date.strftime('%a %b %d %H:%M:%S')
+      }
     else
-      []
+      {}
     end
-  end
-
-  def maven_jnlp_info
-    name = jnlp_adaptor.jnlp.versioned_jnlp_url.maven_jnlp_family.name
-    version = jnlp_adaptor.jnlp.versioned_jnlp_url.version_str
-    url = jnlp_adaptor.jnlp.versioned_jnlp_url.url
-    link = "<a href='#{url}'>#{version}</a>"
-    info = [name, link]
-    if current_project.snapshot_enabled
-      info << "(snapshot)"
-    else
-      info << "(frozen)"
-    end
-
-    # if jnlp_adaptor.jnlp.versioned_jnlp_url.maven_jnlp_family.snapshot_version == version
-    #   info << "(snapshot)"
-    # else
-    #   info << "(frozen)"
-    # end
   end
 
   def display_repo_info
@@ -138,7 +111,7 @@ module ApplicationHelper
       content_tag('ul', :class => 'tiny menu_h') do
         list = ''
         list << content_tag('li') { branch }
-        list << content_tag('li') { "<a title='href='http://github.com/stepheneb/rigse/commit/#{last_commit.id}'>#{truncate(last_commit.id, :length => 16)}</a>" }
+        list << content_tag('li') { "<a title='href='http://github.com/concord-consortium/rigse/commit/#{last_commit.id}'>#{truncate(last_commit.id, :length => 16)}</a>" }
         list << content_tag('li') { last_commit.author.name }
         list << content_tag('li') { last_commit.authored_date.strftime('%a %b %d %H:%M:%S') }
         list << content_tag('li') { truncate(message, :length => 70) }
@@ -197,28 +170,48 @@ module ApplicationHelper
     if container_class.respond_to?(:search_list)
       render :partial => "#{container}/runnable_list", :locals => { container_sym => container_class.search_list(locals), :hide_print => hide_print }
     else
-      render :partial => "#{container}/runnable_list", :locals => { container_sym => container_class.find(:all), :hide_print => hide_print }
+      render :partial => "#{container}/runnable_list", :locals => { container_sym => container_class.all, :hide_print => hide_print }
     end
   end
 
+  def top_level_container_name_as_class_string
+    container = top_level_container_name.pluralize
+    container_sym = top_level_container_name.pluralize.to_sym
+    container_class = top_level_container_name.classify
+  end
+
   def render_partial_for(component,_opts={})
+    ## if we're rendering otml, only render if the thing we're rendering hasn't
+    ## already been rendered before.
+    if self.formats.include?('otml') || self.formats.include?(:otml)
+      if already_rendered?(component)
+        return ""
+      else
+        mark_rendered(component)
+      end
+    end
     class_name = component.class.name.underscore
     demodulized_class_name = component.class.name.delete_module.underscore_module
 
     opts = {
       :teacher_mode => false,
       :substitute    => nil,
-      :partial      => 'show'
+      :partial      => 'show',
+      :locals       => {}
     }
     opts.merge!(_opts)
     teacher_mode = opts[:teacher_mode]
     substitute = opts[:substitute]
     partial = "#{class_name.pluralize}/#{opts[:partial]}"
-    render :partial => partial, :locals => { demodulized_class_name.to_sym => (substitute ? substitute : component), :teacher_mode => teacher_mode}
+    locals = opts[:locals]
+    locals[demodulized_class_name.to_sym] = substitute ? substitute : component
+    locals[:teacher_mode] = teacher_mode
+    render :partial => partial, :locals => locals
   end
 
-  def render_show_partial_for(component,teacher_mode=false,substitute=nil)
-    render_partial_for(component, {:teacher_mode => teacher_mode, :substitute => substitute})
+  def render_show_partial_for(component, _opts = {})
+    opts = {:teacher_mode => false, :substitute => nil}.merge(_opts)
+    render_partial_for(component, opts)
   end
 
   def render_edit_partial_for(component,opts={})
@@ -235,7 +228,7 @@ module ApplicationHelper
     dom_id = dom_id_for(component, :edit_link)
 
     capture_haml do
-      if component.changeable?(current_user)
+      if component.changeable?(current_visitor)
         haml_tag :div, :id=> dom_id, :class => 'editable_block', :onDblClick=> js_function  do
           if block_given?
             yield
@@ -286,7 +279,7 @@ module ApplicationHelper
         end
         haml_tag :div, :class => 'action_menu_header_right' do
           haml_tag :ul, {:class => 'menu'} do
-            #if (component.changeable?(current_user))
+            #if (component.changeable?(current_visitor))
             haml_tag(:li, {:class => 'menu'}) { haml_concat form.submit("Save") }
             haml_tag(:li, {:class => 'menu'}) { haml_concat form.submit("Cancel") } unless options[:omit_cancel]
             #end
@@ -331,9 +324,11 @@ module ApplicationHelper
     end
   end
 
-  def sort_dropdown(selected)
-    sort_options = [ [ "Newest", "created_at DESC" ], [ "Alphabetical", "name ASC" ], [ "Popularity", "offerings_count DESC" ] ]
-    select nil, :sort_order, sort_options, {:selected => selected, :include_blank => true }
+  def sort_dropdown(selected,keep = [])
+    selected ||= Search::Alphabetical
+    default_options = [ [Search::Oldest, "Oldest"], [Search::Newest, "Newest"], [Search::Alphabetical, "Alphabetical"], [Search::Popularity, "Popularity"] ]
+    sort_options = (keep.size > 0 ? default_options.select{|o| keep.include?(o[0]) } : default_options)
+    select nil, :sort_order, sort_options, {:selected => selected, :include_blank => false }
   end
 
   def otrunk_edit_button_for(component, options={})
@@ -378,14 +373,20 @@ module ApplicationHelper
   end
 
   def report_link_for(reportable, action='report', link_text='Report ', title=nil)
+    return "" if reportable.respond_to?('reportable?') && !reportable.reportable?
+
     reportable_display_name = reportable.class.display_name.downcase
     action_string = action.gsub('_', ' ')
     name = reportable.name
-    url = polymorphic_url(reportable, :action => action)
+    format = nil
+    if (reportable.respond_to?('runnable') && reportable.runnable.respond_to?('report_format') && reportable.runnable.respond_to?('report_url') && reportable.runnable.report_url && !reportable.runnable.report_url.strip.empty?)
+      format = reportable.runnable.report_format
+    end
+    url = polymorphic_url(reportable, :action => action, :format => format)
     if title.nil?
       title = "Display a #{action_string} for the #{reportable_display_name}: '#{name}' in a new browser window."
     end
-    link_to(link_text, url, :popup => true, :title => title)
+    link_to(link_text, url, :target => '_blank', :title => title)
   end
 
   def activation_toggle_link_for(activatable, action='activate', link_text='Activate', title=nil)
@@ -430,7 +431,7 @@ module ApplicationHelper
     params.merge!({:print => true})
     url = polymorphic_url(component,:params => params)
     link_button("print.png", url, :title => "print the #{component_display_name}: '#{name}'") +
-    link_to(link_text,url,:popup => true)
+    link_to(link_text,url, :target => '_blank')
   end
 
   def otml_link_for(component, params={})
@@ -443,19 +444,23 @@ module ApplicationHelper
   end
 
   def delete_button_for(model, options={})
-    if model.changeable? current_user
+    if model.changeable? current_visitor
       # find the page_element for the embeddable
       embeddable = (model.respond_to? :embeddable) ? model.embeddable : model
       controller = "#{model.class.name.pluralize.underscore}"
       if defined? model.parent
-        options[:redirect] ||= url_for model.parent
+
+        # allow specification of options[:redirect] = false to skip
+        if options[:redirect].nil?
+          options[:redirect]= url_for model.parent
+        end
       end
       if options[:redirect]
-        url = url_for(:controller => controller, :action => 'destroy', :id=>model.id, :redirect=>options[:redirect])
+        url = url_for(:controller => controller, :id => model.id, :action => :destroy, :redirect=>options[:redirect])
       else
-        url = url_for(:controller => controller, :action => 'destroy', :id=>model.id)
+        url = url_for(:controller => controller, :id => model.id, :action => :destroy)
       end
-      remote_link_button "delete.png", :confirm => "Delete  #{embeddable.class.display_name.downcase} named #{embeddable.name}?", :url => url, :title => "delete #{embeddable.class.display_name.downcase}"
+      remote_link_button "delete.png", :method => :delete, :confirm => "Delete  #{embeddable.class.display_name.downcase} named #{embeddable.name}?", :url => url, :title => "delete #{embeddable.class.display_name.downcase}"
     end
   end
 
@@ -466,7 +471,7 @@ module ApplicationHelper
   def title_for_component(component, options={})
     title = name_for_component(component, options)
     id = dom_id_for(component, options[:id_prefix], :title)
-    if RAILS_ENV == "development" || current_user.has_role?('admin')
+    if ::Rails.env == "development" || current_visitor.has_role?('admin')
       "<span id=#{id} class='component_title'>#{title}</span><span class='dev_note'> #{link_to(component.id, component)}</span>"
     else
       "<span id=#{id} class='component_title'>#{title}</span>"
@@ -495,7 +500,7 @@ module ApplicationHelper
     end
     name << case
       when component.id.nil? then "(new)"
-      when component.name == component.class.default_value('name') then ''
+      when component.name == default_name then ''
       when component.name then component.name
       else ''
     end
@@ -599,7 +604,7 @@ module ApplicationHelper
       reportUtil = Report::Util.factory(offering)
       questions = reportUtil.embeddables(:type => options[:type])
       type_id_lambda = lambda{|s|
-        types = Investigation.reportable_types.map{|t| t.to_s.demodulize.underscore }
+        types = ResponseTypes.reportable_types.map{|t| t.to_s.demodulize.underscore }
         type = types.detect{|t| s.respond_to?(t) }
         if type
           type_id = "#{type}_id"
@@ -634,22 +639,30 @@ module ApplicationHelper
     options = { :omit_delete => true, :omit_edit => true, :hide_component_name => true }
     options.update(opts)
     reportUtil = Report::Util.factory(offering)
+    required = open_response.is_required
     total = reportUtil.learners.size
-    answered = reportUtil.saveables(:embeddable => open_response, :answered => true).size
+    answered = reportUtil.saveables(:embeddable => open_response, :submitted => true).size
     skipped = total - answered
     capture_haml do
       haml_tag :div, :class => 'action_menu' do
         haml_tag :div, :class => 'action_menu_header_left'
       end
-      haml_tag(:div, :class => 'item', :style => 'width: 565px; display: -moz-inline-block; display: inline-block;') {
+      haml_tag(:div, :class => 'report_question_prompt') {
         haml_concat(open_response.prompt)
       }
-      haml_tag(:div, :style => 'width: 90px; display: -moz-inline-block; display: inline-block; text-align: right; vertical-align: top; font-weight: bold;') {
+      if required
+        haml_tag(:div) {
+          haml_tag(:span, :class => 'tag') {
+            haml_concat("required")
+          }
+        }
+      end
+      haml_tag(:div, :class => 'report_question_summary_title') {
         haml_tag(:div) { haml_concat("Answered") }
-        haml_tag(:div) { haml_concat("Skipped") }
+        haml_tag(:div) { haml_concat("Not answered") }
         haml_tag(:div) { haml_concat("Total") }
       }
-      haml_tag(:div, :style => 'width: 15px; display: -moz-inline-block; display: inline-block; text-align: right; vertical-align: top;') {
+      haml_tag(:div, :class => 'report_question_summary_info') {
         haml_tag(:div) { haml_concat(answered) }
         haml_tag(:div) { haml_concat(skipped) }
         haml_tag(:div) { haml_concat(total) }
@@ -660,37 +673,63 @@ module ApplicationHelper
   def offering_details_image_question(offering, image_question, opts = {})
     options = { :omit_delete => true, :omit_edit => true, :hide_component_name => true }
     options.update(opts)
+    required = image_question.is_required
     reportUtil = Report::Util.factory(offering)
     total = reportUtil.learners.size
-    answered_saveables = reportUtil.saveables(:embeddable => image_question, :answered => true)
+    answered_saveables = reportUtil.saveables(:embeddable => image_question, :submitted => true)
     answered = answered_saveables.size
     skipped = total - answered
-    answers_map = answered_saveables.sort_by{|s| [s.learner.last_name, s.learner.first_name]}.map{|sa| {:name => sa.learner.name, :image_url => dataservice_blob_raw_url(:id => sa.answer.id, :token => sa.answer.token)} }
+    answers_map = answered_saveables.sort_by { |s| [s.learner.last_name, s.learner.first_name] }.map do |sa|
+      {
+        name: sa.learner.name,
+        note: sa.answer[:note],
+        image_url: dataservice_blob_raw_url(:id => sa.answer[:blob].id, :token => sa.answer[:blob].token)
+      }
+    end
     capture_haml do
       haml_tag :div, :class => 'action_menu' do
         haml_tag :div, :class => 'action_menu_header_left'
       end
-      haml_tag(:div, :class => 'item', :style => 'width: 565px; display: -moz-inline-block; display: inline-block;') {
-        haml_concat(image_question.prompt)
+      haml_tag(:div, :class => 'item report_question_prompt') {
+        unless image_question.drawing_prompt.blank?
+          haml_tag(:div, :class => 'image-question-drawing-prompt') {
+            haml_concat(image_question.drawing_prompt)
+          }
+        end
+        haml_tag(:div, :class => 'image-question-text-prompt') {
+          haml_concat(image_question.prompt)
+        }
+        if required
+          haml_tag(:div) {
+            haml_tag(:span, :class => 'tag') {
+              haml_concat("required")
+            }
+          }
+        end
       }
-      haml_tag(:div, :style => 'width: 90px; display: -moz-inline-block; display: inline-block; text-align: right; vertical-align: top; font-weight: bold;') {
+      haml_tag(:div, :class => 'report_question_summary_title') {
         haml_tag(:div) { haml_concat("Answered") }
-        haml_tag(:div) { haml_concat("Skipped") }
+        haml_tag(:div) { haml_concat("Not answered") }
         haml_tag(:div) { haml_concat("Total") }
       }
-      haml_tag(:div, :style => 'width: 15px; display: -moz-inline-block; display: inline-block; text-align: right; vertical-align: top;') {
+      haml_tag(:div, :class => 'report_question_summary_info') {
         haml_tag(:div) { haml_concat(answered) }
         haml_tag(:div) { haml_concat(skipped) }
         haml_tag(:div) { haml_concat(total) }
       }
-      haml_tag(:div, :style => 'width: 670px') {
+      haml_tag(:div, :style => 'width: 710px') {
         haml_concat(contentflow("image_question_#{image_question.id}_content_flow") do
           capture_haml do
             answers_map.each do |b|
               haml_tag(:div, :class => 'item') {
                 haml_tag(:img, :class =>' content', :src=> b[:image_url], :title => b[:name])
                 haml_tag(:div, :class => 'caption') {
-                  haml_concat(b[:name])
+                  haml_tag(:div, :class => 'user') {
+                    haml_concat(b[:name])
+                  }
+                  haml_tag(:div, :class => 'note') {
+                    haml_concat(b[:note])
+                  }
                 }
               }
             end
@@ -704,28 +743,39 @@ module ApplicationHelper
   def offering_details_multiple_choice(offering, multiple_choice, opts = {})
     options = { :omit_delete => true, :omit_edit => true, :hide_component_name => true }
     options.update(opts)
+    required = multiple_choice.is_required
     answer_counts = {}
     reportUtil = Report::Util.factory(offering)
     learners = reportUtil.learners
     learners.each do |learner|
       saveable = reportUtil.saveable(learner, multiple_choice)
-      answer = saveable.answer
-      answer_counts[answer] ||= 0
-      answer_counts[answer] += 1
+      saveable.submitted_answer.each do |answer|
+        answer_counts[answer[:answer]] ||= 0
+        answer_counts[answer[:answer]] += 1
+      end
     end
     not_answered_count = answer_counts.has_key?("not answered") ? answer_counts["not answered"].to_i : 0
+    not_answered_count += answer_counts.has_key?("not submitted") ? answer_counts["not submitted"].to_i : 0
     all_choices = multiple_choice.choices
     capture_haml do
       haml_tag :div, :class => 'action_menu' do
         haml_tag :div, :class => 'action_menu_header_left'
       end
       haml_tag(:div) {
-        haml_tag(:div, :class => 'item') {
+        haml_tag(:div) {
           haml_concat(multiple_choice.prompt)
         }
+        if required
+          haml_tag(:div) {
+            haml_tag(:span, :class => 'tag') {
+              haml_concat("required")
+            }
+          }
+        end
         haml_tag(:div) {
           haml_tag(:div, :class => 'table') {
             haml_tag(:div, :class => 'row', :style => 'display: none;') {
+              haml_tag(:div, :class => "cell cellheader") { haml_concat("Correct?")}
               haml_tag(:div, :class => "cell cellheader") { haml_concat("Option")}
               haml_tag(:div, :class => "cell cellheader") { haml_concat("Graph")}
               haml_tag(:div, :class => "cell cellheader") { haml_concat("Percent")}
@@ -733,8 +783,17 @@ module ApplicationHelper
             }
             all_choices.each_with_index do |choice,i|
               answer_count = answer_counts.has_key?(choice.choice) ? answer_counts[choice.choice] : 0
-              correctness = choice.is_correct ? "correct" : "incorrect"
+              checkmark = ""
+              if multiple_choice.has_correct_answer?
+                correctness = choice.is_correct ? "correct" : "incorrect"
+                checkmark = "&#x2713;".html_safe if choice.is_correct?
+              else
+                correctness = "non-correctable"
+              end
               haml_tag(:div, :class => 'row') {
+                haml_tag(:div, :class => "cell optioncheckmark #{correctness}") {
+                  haml_concat(checkmark)
+                }
                 haml_tag(:div, :class => "cell optionlabel #{correctness}") {
                   haml_concat("#{i+1}. #{choice.choice}")
                 }
@@ -752,6 +811,7 @@ module ApplicationHelper
               }
             end
             haml_tag(:div, :class => 'row') {
+              haml_tag(:div, :class => 'cell optioncheckmark')
               haml_tag(:div, :class => 'cell optionlabel') {
                 haml_concat("Not answered")
               }
@@ -768,6 +828,7 @@ module ApplicationHelper
               }
             }
             haml_tag(:div, :class => 'row', :style => 'border-top: 2px solid black;') {
+              haml_tag(:div, :class => 'cell optioncheckmark')
               haml_tag(:div, :class => 'cell optionlabel') {
                 haml_concat("&nbsp;")
               }
@@ -783,6 +844,33 @@ module ApplicationHelper
             }
           }
         }
+      }
+    end
+  end
+
+  def offering_details_iframe(offering, iframe, opts = {})
+    options = { :omit_delete => true, :omit_edit => true, :hide_component_name => true }
+    options.update(opts)
+    reportUtil = Report::Util.factory(offering)
+    total = reportUtil.learners.size
+    answered = reportUtil.saveables(:embeddable => iframe).size
+    skipped = total - answered
+    capture_haml do
+      haml_tag :div, :class => 'action_menu' do
+        haml_tag :div, :class => 'action_menu_header_left'
+      end
+      haml_tag(:div, :class => 'report_question_prompt') {
+        haml_concat(iframe.name)
+      }
+      haml_tag(:div, :class => 'report_question_summary_title') {
+        haml_tag(:div) { haml_concat("Launched") }
+        haml_tag(:div) { haml_concat("Not launched") }
+        haml_tag(:div) { haml_concat("Total") }
+      }
+      haml_tag(:div, :class => 'report_question_summary_info') {
+        haml_tag(:div) { haml_concat(answered) }
+        haml_tag(:div) { haml_concat(skipped) }
+        haml_tag(:div) { haml_concat(total) }
       }
     end
   end
@@ -812,7 +900,7 @@ module ApplicationHelper
           if learner.offering.runnable.run_format == :jnlp
             haml_concat link_to('Run', run_url_for(learner))
             haml_concat " | "
-            if current_user.has_role?("admin")
+            if current_visitor.has_role?("admin")
               haml_concat report_link_for(learner, 'bundle_report', 'Bundles ')
               haml_concat " | "
             end
@@ -826,6 +914,20 @@ module ApplicationHelper
           end
         end
       end
+    end
+  end
+
+  def lara_report_link(offering)
+    if offering.runnable.kind_of?(ExternalActivity)
+      url      = offering.runnable.url
+      uri      = URI.parse(url)
+      learners = offering.learner_ids.join(",")
+      students = offering.learners.map { |l| "#{l.id}:#{l.user.login}" }.join(",")
+      students = URI.escape(students)
+      learners = URI.escape(learners)
+      report_url = "#{uri.scheme}://#{uri.host}:#{uri.port}/runs/details?learners=#{learners}&students=#{students}"
+      haml_concat " | "
+      haml_concat link_to("LARA Run report", report_url, {:target => "_blank"} )
     end
   end
 
@@ -843,8 +945,11 @@ module ApplicationHelper
           haml_concat options[:print_link]
           haml_concat " | "
           haml_concat dropdown_link_for(:text => "Run", :id=> dom_id_for(offering.runnable,"run_rollover"), :content_id=> dom_id_for(offering.runnable,"run_dropdown"),:title =>"run this #{top_level_container_name}")
-          haml_concat " | "
-          haml_concat report_link_for(offering, 'report', 'Report')
+          report_link = report_link_for(offering, 'report', 'Report')
+          if !report_link.blank?
+            haml_concat " | #{report_link}"
+          end
+          lara_report_link(offering)
           haml_concat " | "
 
           if offering.active?
@@ -890,13 +995,7 @@ module ApplicationHelper
           haml_concat title_for_component(component, options)
         end
         haml_tag :div, :class => 'action_menu_header_right' do
-          if (component.changeable?(current_user))
-            begin
-              if component.authorable_in_java?
-                haml_concat otrunk_edit_button_for(component, options)
-              end
-            rescue NoMethodError
-            end
+          if (component.changeable?(current_visitor))
             haml_concat edit_button_for(component, options)  unless options[:omit_edit]
             haml_concat delete_button_for(deletable_element) unless options[:omit_delete]
           end
@@ -932,7 +1031,7 @@ module ApplicationHelper
       :onmouseover => "dropdown_for('#{options[:id]||'dropdown'}','#{options[:content_id]||'add_content'}')"
     }
     options = defaults.merge(options)
-    link_to(options[:text], options[:url], options)
+    link_to(options[:text], options[:url], options.except(:text, :url))
   end
 
   def dropdown_button(image,options={})
@@ -1022,7 +1121,7 @@ module ApplicationHelper
 
   def style_for_item(component,style_classes=[])
     style_classes << 'item' << 'selectable' << 'item_selectable'
-    if (component.respond_to? 'changeable?') && (component.changeable?(current_user))
+    if (component.respond_to? 'changeable?') && (component.changeable?(current_visitor))
       style_classes << 'movable'
     end
     style_classes = style_for_teachers(component,style_classes)
@@ -1039,9 +1138,18 @@ module ApplicationHelper
     end
   end
 
+  def already_rendered?(thing)
+    return @render_scope_additional_objects && @render_scope_additional_objects.include?(thing)
+  end
+
+  def mark_rendered(thing)
+    @render_scope_additional_objects ||= []
+    @render_scope_additional_objects << thing
+  end
+
   def in_render_scope?(thing)
     return true if thing == nil
-    if @render_scope_additional_objects && @render_scope_additional_objects.include?(thing)
+    if already_rendered?(thing)
       return true
     end
 
@@ -1063,8 +1171,6 @@ module ApplicationHelper
         haml_tag :object, :refid => ot_refid_for(thing)
       end
     else
-      @render_scope_additional_objects ||= []
-      @render_scope_additional_objects << thing
       render_show_partial_for(thing)
     end
   end
@@ -1119,9 +1225,9 @@ module ApplicationHelper
   end
 
 #            Welcome
-#            = "#{current_user.name}."
-#            - unless current_user.anonymous?
-#              = link_to 'Preferences', preferences_user_path(current_user)
+#            = "#{current_visitor.name}."
+#            - unless current_visitor.anonymous?
+#              = link_to 'Preferences', preferences_user_path(current_visitor)
 #              \/
 #              = link_to 'Logout', logout_path
 #            - else
@@ -1130,7 +1236,7 @@ module ApplicationHelper
 #              = link_to 'Sign Up', pick_signup_path
 #            - if @original_user.has_role?('admin', 'manager')
 #              \/
-#              = link_to 'Switch', switch_user_path(current_user)
+#              = link_to 'Switch', switch_user_path(current_visitor)
   def login_line(options = {})
     opts = {
       :welcome  => "Welcome",
@@ -1143,7 +1249,7 @@ module ApplicationHelper
     }
     opts.merge!(options)
     message = ""
-    if current_user.anonymous?
+    if current_visitor.anonymous?
       if opts[:guest]
         message += "#{opts[:welcome]} #{opts[:guest]} &nbsp;"
       end
@@ -1151,13 +1257,13 @@ module ApplicationHelper
       message += " / "
       message += link_to opts[:signup], pick_signup_path
     else
-      message += "#{opts[:welcome]} #{current_user.send(opts[:name_method])} &nbsp;"
-      message += link_to opts[:prefs],  preferences_user_path(current_user)
+      message += "#{opts[:welcome]} #{current_visitor.send(opts[:name_method])} &nbsp;"
+      message += link_to opts[:prefs],  preferences_user_path(current_visitor)
       message += " / "
       message += link_to opts[:logout], logout_path
       if @original_user.has_role?('admin','manager')
         message += " "
-        message += link_to 'Switch', switch_user_path(current_user)
+        message += link_to 'Switch', switch_user_path(current_visitor)
       end
     end
     message
@@ -1176,7 +1282,7 @@ module ApplicationHelper
   end
 
   def use_contentflow
-    javascript_include_tag("contentflow/contentflow.js").sub(/></, " load='white' ><")
+    javascript_include_tag("contentflow_configured") + stylesheet_link_tag("contentflow_configured")
   end
 
   def contentflow(name, opts = {})
@@ -1184,7 +1290,7 @@ module ApplicationHelper
     opts.merge!(defaults){|k,o,n| o}
 
     capture_haml do
-      haml_concat javascript_tag "var myNewFlow = new ContentFlow('#{name}', { reflectionHeight: 0, circularFlow: false, startItem: 'first' } );"
+      haml_concat javascript_tag "var myNewFlow = new ContentFlow('#{name}', { reflectionHeight: 0, circularFlow: false,  scaleFactorPortrait: 'max', startItem: 'first', maxItemHeight: '300', visibleItems: 1} );"
       haml_tag :div, :class => 'ContentFlow', :id => name do
         if opts[:load_indicator]
           haml_tag :div, :class => 'loadIndicator' do
@@ -1209,19 +1315,48 @@ module ApplicationHelper
       end
     end
   end
-  
+
   def settings_for(key)
-    Admin::Project.settings_for(key)
+    Admin::Settings.settings_for(key)
   end
 
   # this appears to not be used in master right now
   def current_user_can_author
-    return true if current_user.has_role? "author" 
+    return true if current_visitor.has_role? "author"
     if settings_for(:teachers_can_author)
-      return true unless current_user.portal_teacher.nil?
+      return true unless current_visitor.portal_teacher.nil?
     end
     # TODO add aditional can-author conditions
     return false
+  end
+
+  # Rails 3.0 way of switching the format for a block of code
+  # see: http://stackoverflow.com/questions/339130/how-do-i-render-a-partial-of-a-different-format-in-rails
+  def with_format(format, &block)
+    old_formats = formats
+    self.formats = [format]
+    block.call
+    self.formats = old_formats
+    nil
+  end
+
+  def google_analytics_config
+    <<CONFIG
+var _gaq = _gaq || [];
+_gaq.push(['_setAccount', '#{GOOGLE_ANALYTICS_ACCOUNT}']);
+_gaq.push(['_trackPageview']);
+
+(function() {
+  var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+})();
+CONFIG
+  end
+
+  # This fixes an error in polymorphic_url brought on because the Admin::Settings model name is plural.
+  def admin_settings_index_path(*args)
+    admin_settings_path
   end
 
 end

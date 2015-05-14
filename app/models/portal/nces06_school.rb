@@ -1,5 +1,5 @@
 class Portal::Nces06School < ActiveRecord::Base
-  set_table_name :portal_nces06_schools
+  self.table_name = :portal_nces06_schools
   
   belongs_to :nces_district, :class_name => "Portal::Nces06District", :foreign_key => "nces_district_id"
   
@@ -16,9 +16,6 @@ class Portal::Nces06School < ActiveRecord::Base
       @@searchable_attributes
     end
 
-    def display_name
-      "NCES School"
-    end
   end
   
   def portal_school_created?
@@ -34,7 +31,7 @@ class Portal::Nces06School < ActiveRecord::Base
   end
   
   def address
-    capitalized_words(self.MSTREE) + ', ' + capitalized_words(self.MCITY) + ", #{self.MSTATE} #{self.MZIP}" 
+    capitalized_words(self.MSTREE.split) + ', ' + capitalized_words(self.MCITY.split) + ", #{self.MSTATE} #{self.MZIP}" 
   end
 
   def geographic_location

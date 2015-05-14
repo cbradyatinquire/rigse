@@ -35,3 +35,32 @@ Given /^the following activities with multiple choices exist:$/ do |activity_tab
     activity.sections << section
   end
 end
+
+When /^(?:|I )create activities "(.+)" before "(.+)" by date$/ do |activities_name1, activities_name2|
+  created_at = Date.today
+  ['activities_name1', 'activities_name2'].each do |activity|
+    act = Activity.find_or_create_by_name(activity)
+    created_at = created_at - 1
+    act.created_at = created_at
+    act.updated_at = created_at
+    act.save!
+  end
+end
+
+#Table: | investigation | activity | activity_teacher_only | section   | page   | multiple_choices |
+Given /^a simple activity with a multiple choice exists$/ do
+  activity = Activity.create(:name => 'simple activity', :description => 'simple activity')
+  activity.user = Factory(:user)
+  activity.save.should be_true
+
+  section = Section.create(:name => 'simple section')
+  activity.sections << section
+
+  page = Page.create(:name => 'simple page')
+  section.pages << page
+
+  mc = Factory(:multiple_choice)
+  mc.addChoice("Choice 1")
+  mc.addChoice("Choice 2")
+  mc.pages << page
+end

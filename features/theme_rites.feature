@@ -4,31 +4,17 @@ Feature: Investigations can be searched
   I want to sort the investigations list
 
   Background:
-    Given The default project and jnlp resources exist using factories
+    Given The default settings and jnlp resources exist using factories
+    And the database has been seeded
     Given The theme is "rites"
-    Given the following users exit:
-      | login         | password        | roles |
-      | author        | author          | author|
-
-
-    And the following students exist:
-      | login         | password        |
-      | student       | student         |
-
-    And the following teachers exist:
-      | login         | password        |
-      | teacher       | teacher         |
-    And the following classes exist:
-      | name      | teacher     |
-      | My Class  | teacher     |
     And the following empty investigations exist:
         | name                    | user    | offerings_count | publication_status | 
         | a Investigation         | author  | 5               | published          | 
       
 
-  @selenium @wip
+  @javascript @wip
   Scenario: Investigation and resource links are hidden from teachers
-    When I login with username: teacher password: teacher
+    When I am logged in with the username teacher
     And  I am on the home page
     Then I should see "RITES"
     And  I should not see "APP_CONFIG"
@@ -36,27 +22,27 @@ Feature: Investigations can be searched
     And  I should not see "Investigation" within "#nav_top"
 
 
-  @selenium @wip
+  @javascript @wip
   Scenario: Investigation and resource links are hidden from students
-    When I login with username: student password: student
+    When I am logged in with the username student
     And  I am on the home page
     Then I should see "RITES"
     And  I should not see "APP_CONFIG"
     And  I should not see "Resources" within "#nav_top"
     And  I should not see "Investigation" within "#nav_top"
   
-  @selenium @wip
+  @javascript @wip
   Scenario: Investigation links are shown to authors
-    When I login with username: author password: author
+    When I am logged in with the username author
     And  I am on the home page
     Then I should see "RITES"
     And  I should see "Investigation" within "#nav_top"
     And  I should not see "APP_CONFIG"
     And  I should not see "Resources" within "#nav_top"
 
-  @selenium @wip
+  @javascript @wip
   Scenario: Resources are hidden from teachers in class assignment
-    When I login with username: teacher password: teacher
+    When I am logged in with the username teacher
     And  I am on the class page for "My Class"
     And  I should not see "create resource" within "#resource_pages"
 

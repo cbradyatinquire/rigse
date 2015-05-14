@@ -7,7 +7,7 @@ describe RiGse::AssessmentTargetsController do
   end
 
   before(:each) do
-    generate_default_project_and_jnlps_with_mocks
+    generate_default_settings_and_jnlps_with_mocks
     # generate_portal_resources_with_mocks
     login_admin
   end
@@ -15,7 +15,7 @@ describe RiGse::AssessmentTargetsController do
   describe "responding to GET index" do
 
     it "should expose an array of all the @assessment_targets" do
-      RiGse::AssessmentTarget.should_receive(:find).with(:all, hash_including(will_paginate_params)).and_return([mock_assessment_target])
+      RiGse::AssessmentTarget.should_receive(:search).and_return([mock_assessment_target])
       get :index
       assigns[:assessment_targets].should == [mock_assessment_target]
     end
@@ -24,7 +24,7 @@ describe RiGse::AssessmentTargetsController do
   
       it "should render all assessment_targets as xml" do
         request.env["HTTP_ACCEPT"] = "application/xml"
-        RiGse::AssessmentTarget.should_receive(:find).with(:all).and_return(assessment_targets = mock("Array of AssessmentTargets"))
+        RiGse::AssessmentTarget.should_receive(:all).and_return(assessment_targets = mock("Array of AssessmentTargets"))
         assessment_targets.should_receive(:to_xml).and_return("generated XML")
         get :index
         response.body.should == "generated XML"

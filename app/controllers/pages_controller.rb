@@ -1,6 +1,9 @@
 class PagesController < ApplicationController
   helper :all
   
+  # so we can use dom_id_for
+  include ApplicationHelper
+
   before_filter :find_entities, :except => [:create,:new,:index,:delete_element,:add_element]
   before_filter :render_scope, :only => [:show]
   before_filter :can_edit, :except => [:index,:show,:print,:create,:new]
@@ -16,7 +19,7 @@ class PagesController < ApplicationController
   end
   
   def can_create
-    if (current_user.anonymous?)
+    if (current_visitor.anonymous?)
       flash[:error] = "Anonymous users can not create pages"
       redirect_back_or pages_path
     end
@@ -46,8 +49,8 @@ class PagesController < ApplicationController
   
   def can_edit
     if defined? @page
-      unless @page.changeable?(current_user)
-        error_message = "you (#{current_user.login}) are not permitted to #{action_name.humanize} (#{@page.name})"
+      unless @page.changeable?(current_visitor)
+        error_message = "you (#{current_visitor.login}) are not permitted to #{action_name.humanize} (#{@page.name})"
         flash[:error] = error_message
         if request.xhr?
           render :text => "<div class='flash_error'>#{error_message}</div>"
@@ -65,7 +68,7 @@ class PagesController < ApplicationController
   def index
     # @activity = Activity.find(params['section_id'])
     # @pages = @activity.pages
-    # @pages = Page.find(:all)
+    # @pages = Page.all
     
     @include_drafts = param_find(:include_drafts)
     @name = param_find(:name)
@@ -86,7 +89,7 @@ class PagesController < ApplicationController
     })
 
     if params[:mine_only]
-      @pages = @pages.reject { |i| i.user.id != current_user.id }
+      @pages = @pages.reject { |i| i.user.id != current_visitor.id }
     end
 
     @paginated_objects = @pages
@@ -113,10 +116,20 @@ class PagesController < ApplicationController
       }
       format.run_sparks_html   { render :show, :layout => "layouts/run" }
       format.run_html   { render :show, :layout => "layouts/run" }
-      format.jnlp       { render :partial => 'shared/show', :locals => { :runnable => @page, :teacher_mode => @teacher_mode } }
+      format.jnlp       { render :partial => 'shared/installer', :locals => { :runnable => @page, :teacher_mode => @teacher_mode } }
       format.config     { render :partial => 'shared/show', :locals => { :runnable => @page, :teacher_mode => @teacher_mode, :session_id => (params[:session] || request.env["rack.session.options"][:id]) } }      
       format.otml       { render :layout => "layouts/page" } # page.otml.haml
-      format.dynamic_otml { render :partial => 'shared/show', :locals => {:runnable => @page, :teacher_mode => @teacher_mode} }
+      format.dynamic_otml {
+        learner = (params[:learner_id] ? Portal::Learner.find(params[:learner_id]) : nil)
+        if learner && learner.bundle_logger.in_progress_bundle
+          launch_event = Dataservice::LaunchProcessEvent.create(
+            :event_type => Dataservice::LaunchProcessEvent::TYPES[:activity_otml_requested],
+            :event_details => "Activity content loaded. Activity should now be running...",
+            :bundle_content => learner.bundle_logger.in_progress_bundle
+          )
+        end
+        render :partial => 'shared/show', :locals => {:runnable => @page, :teacher_mode => @teacher_mode}
+      }
       format.xml        { render :xml => @page }
     end
   end
@@ -155,7 +168,7 @@ class PagesController < ApplicationController
   # POST /page.xml
   def create
     @page = Page.create(params[:page])
-    @page.user = current_user
+    @page.user = current_visitor
     respond_to do |format|
       if @page.save
         format.js
@@ -190,6 +203,7 @@ class PagesController < ApplicationController
   def destroy
     @page.destroy
     @redirect = params[:redirect]
+
     respond_to do |format|
       format.html { redirect_to(page_url) }
       format.js
@@ -205,7 +219,8 @@ class PagesController < ApplicationController
 
   def add_element
     @page = Page.find(params['page_id'])
-    @container = params['container'] || 'elements_container'
+    # @container no longer used?
+    @container = params['container']
 
     # dynamically instantiate the component based on its type.
     component_class = params['class_name'].constantize
@@ -223,11 +238,12 @@ class PagesController < ApplicationController
     else
       @component = component_class.create
     end
+    @component.create_default_choices if component_class == Embeddable::MultipleChoice
     @component.pages << @page
-    @component.user = current_user
+    @component.user = current_visitor
     @component.save
     @element = @page.element_for(@component)
-    @element.user = current_user
+    @element.user = current_visitor
     @element.save
     
     # 
@@ -242,9 +258,16 @@ class PagesController < ApplicationController
   ##
   ##  
   def sort_elements
+    key_name = 'elements_container'
+    params.each_key do |k|
+      key_name = k if k =~ /elements_container/
+    end
     @page.page_elements.each do |element|
-      element.position = params['elements_container'].index(element.id.to_s) + 1
-      element.save
+      element_index = params[key_name].index(element.id.to_s)
+      if element_index
+        element.position = element_index + 1
+        element.save
+      end
     end 
     render :update do |page|
       page << "flatten_sortables();"
@@ -256,7 +279,7 @@ class PagesController < ApplicationController
   ##
   ##
   def duplicate
-    @copy = @page.deep_clone :no_duplicates => true, :never_clone => [:uuid, :created_at, :updated_at], :include => {:page_elements => :embeddable}
+    @copy = @page.deep_clone :no_duplicates => true, :never_clone => [:uuid, :created_at, :updated_at]
     @copy.name = "" #force numbering by default
     @copy.save
     flash[:notice] ="Copied #{@page.name}"
@@ -274,7 +297,7 @@ class PagesController < ApplicationController
   # Paste a page component
   #
   def paste
-    if @page.changeable?(current_user)
+    if @page.changeable?(current_visitor)
       @original = clipboard_object(params)      
       if (@original) 
         # let some embeddables define their own means to save
@@ -284,7 +307,7 @@ class PagesController < ApplicationController
           @component = @original.deep_clone :no_duplicates => true, :never_clone => [:uuid, :updated_at,:created_at]
         end
         if (@component)
-          @container = params['container'] || 'elements_container'
+          @container = params['container'] || dom_id_for(@page, :elements_container)
           @component.name = "copy of #{@component.name}"
           @component.user = @page.user
           @component.pages << @page
@@ -294,11 +317,15 @@ class PagesController < ApplicationController
           @element.save
         end
       end
-      render :update do |page|
-        page.insert_html :bottom, @container, render(:partial => 'element_container', :locals => {:edit => true, :page_element => @element, :component => @component, :page => @page })
-        page.sortable 'elements_container', :url=> {:action => 'sort_elements', :params => {:page_id => @page.id }}
-        page[dom_id_for(@component, :item)].scrollTo()  
-        page.visual_effect :highlight, dom_id_for(@component, :item)
+      if @element.nil?
+        logger.warn "Paste failed. original: #{@original} container: #{@container} component: #{@component} element: #{@element}"
+      else 
+        render :update do |page|
+          page.insert_html :bottom, @container, render(:partial => 'element_container', :locals => {:edit => true, :page_element => @element, :component => @component, :page => @page })
+          page.sortable 'elements_container', :url=> {:action => 'sort_elements', :params => {:page_id => @page.id }}
+          page[dom_id_for(@component, :item)].scrollTo()  
+          page.visual_effect :highlight, dom_id_for(@component, :item)
+        end
       end
     end
   end

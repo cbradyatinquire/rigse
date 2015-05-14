@@ -10,11 +10,11 @@ namespace :build do
     end
     
     def bitrocket_installer_dir
-      check_dir_exists("#{RAILS_ROOT}/resources/bitrock_installer")
+      check_dir_exists("#{::Rails.root.to_s}/resources/bitrock_installer")
      end
 
     def installer_dest
-      check_dir_exists("#{RAILS_ROOT}/public/installers/")
+      check_dir_exists("#{::Rails.root.to_s}/public/installers/")
     end
 
     def installer_config_xml
@@ -26,9 +26,15 @@ namespace :build do
     end
     
     def bitrocket_builder_path
-      app_path = ENV['BITROCK_INSTALLER'] || "/Applications/BitRock InstallBuilder Enterprise 6.2.5/bin/Builder.app"
-      app_path = ENV['BITROCK_INSTALLER'] || "/Applications/BitRock InstallBuilder Professional 7.2.0/bin/Builder.app"
-      app_path + "/Contents/MacOS/installbuilder.sh"
+      app_path = ENV['BITROCK_INSTALLER']
+      if RUBY_PLATFORM =~ /darwin/
+        app_path ||= "/Applications/BitRock InstallBuilder Professional 7.2.0/bin/Builder.app"
+        app_path += "/Contents/MacOS/installbuilder.sh"
+      elsif RUBY_PLATFORM =~ /linux/
+        app_path ||= "/opt/installbuilder-8.2.0"
+        app_path += "/bin/builder"
+      end
+      app_path
     end
   
     def default_jnlp_url
@@ -38,9 +44,7 @@ namespace :build do
     def write_file_with_template_replacements(filename,template,replacements)
       File.open(template, "r") do |f|
         file_txt = f.read
-        replacements.each_pair do |k,v|
-          file_txt.gsub!(/\#{#{k}}/,v)
-        end
+        file_txt.gsub!(/\#\{([^\}]+)\}/) {|match| replacements[$1] || "" }
         File.open(filename, "w") do |f|
            f.write(file_txt)
         end
@@ -71,7 +75,7 @@ namespace :build do
       return YAML::load(file_txt)
     end
  
-    def write_config(config, config_file="#{RAILS_ROOT}/config/installer.yml")
+    def write_config(config, config_file="#{::Rails.root.to_s}/config/installer.yml")
       File.open(config_file, "w") { |f|
         f.write(YAML::dump(config))
       }
@@ -101,7 +105,7 @@ namespace :build do
     end
     
     desc 'create a new release specification interactively'
-    task :new_release => ["#{RAILS_ROOT}/config/installer.yml"] do
+    task :new_release => ["#{::Rails.root.to_s}/config/installer.yml"] do
       config = {}
       puts <<-HERE_DOC
         bumping the version... (TODO: create some helper )
@@ -110,7 +114,7 @@ namespace :build do
             #{bitrocket_installer_dir}/#{installer_config_xml}
             #{bitrocket_installer_dir}/jnlps.conf"
       HERE_DOC
-      config = load_yaml("#{RAILS_ROOT}/config/installer.yml")
+      config = load_yaml("#{::Rails.root.to_s}/config/installer.yml")
       %w[shortname version jnlp_config].each do |k|
         config[k] = ask("value for #{k}") { |q| q.default = config[k] }
       end
@@ -118,8 +122,8 @@ namespace :build do
     end
     
     desc 'automagically create a new release'
-    task :bump_release => ["#{RAILS_ROOT}/config/installer.yml"]  do
-       filename = "#{RAILS_ROOT}/config/installer.yml"
+    task :bump_release => ["#{::Rails.root.to_s}/config/installer.yml"]  do
+       filename = "#{::Rails.root.to_s}/config/installer.yml"
        config = load_yaml(filename)
        date,version = config['version'].split(".")
        version = version.to_i
@@ -136,49 +140,66 @@ namespace :build do
        write_config(config)
     end
     
+    desc 'generate the installer configuration files from the config/installer.yml'
+    task :generate_installer_config => ["#{::Rails.root.to_s}/config/installer.yml"]  do
+       filename = "#{::Rails.root.to_s}/config/installer.yml"
+       config = load_yaml(filename)
+       write_config(config)
+    end
+
     desc 'clean jar and installers folder'
     task :clean do
       puts "cleaning the jar folder"
       %x[rm -rf #{bitrocket_installer_dir}/jars]
       %x[rm -rf #{bitrocket_installer_dir}/installers]
+      %x[rm -f "#{bitrocket_installer_dir}/rites.xml"]
+      %x[rm -f "#{bitrocket_installer_dir}/jnlps.conf"]
     end
     
-    file "#{RAILS_ROOT}/config/installer.yml" do
+    file "#{::Rails.root.to_s}/config/installer.yml" do
       configs = current_config_settings
       %w[shortname version jnlp_config].each do |k|
         configs[k] = ask("value for #{k}") { |q| q.default = configs[k] }
       end
-      File.open("#{RAILS_ROOT}/config/installer.yml", "w") { |f|
+      File.open("#{::Rails.root.to_s}/config/installer.yml", "w") { |f|
         f.write(YAML::dump(configs))
       }
     end
     
     
     desc 'cache jars'
-    task :cache_jars => [:clean, :bump_release] do
+    task :cache_jars => [:clean, :generate_installer_config] do
       puts "Caching jar resources"
       %x[mkdir -p #{bitrocket_installer_dir}/jars/]
-      %x[cd #{bitrocket_installer_dir}; ./scripts/cache-jars.sh ]
+      puts %x[cd #{bitrocket_installer_dir}; ./scripts/cache-jars.sh ]
       remove_otrunk_properties
     end
-      
-  
+
     desc 'build the osx installer'
-    task :build_osx => :cache_jars do
+    task :build_osx do
       puts "building osx installer"
-      %x[cd #{bitrocket_installer_dir}; '#{bitrocket_builder_path}' build #{installer_config_xml} osx]
+      puts %x[cd #{bitrocket_installer_dir}; '#{bitrocket_builder_path}' build #{installer_config_xml} osx]
       %x[cp #{bitrocket_installer_dir}/installers/*.dmg #{installer_dest}]
     end
+    task :build_mac => :build_osx
 
     desc 'build the windows installer'
-    task :build_win => :cache_jars do
+    task :build_win do
       puts "building win installer"
-      %x[cd #{bitrocket_installer_dir}; '#{bitrocket_builder_path}' build #{installer_config_xml} windows]
+      puts %x[cd #{bitrocket_installer_dir}; '#{bitrocket_builder_path}' build #{installer_config_xml} windows]
       %x[cp #{bitrocket_installer_dir}/installers/*.exe #{installer_dest}]
     end
+
+    desc 'build the osx installer'
+    task :cache_and_build_osx => [:cache_jars, :build_osx]
+
+    desc 'build the windows installer'
+    task :cache_and_build_win => [:cache_jars, :build_win]
     
     desc 'build all installers: will automatically clean up, recache jars, and bump version numbers.'
-    task :build_all => [:build_win, :build_osx]
-    task :buid_mac => :build_osx
+    task :build_all => [:bump_release, :cache_and_build_win, :cache_and_build_osx]
+
+    desc 'build all installers: will automatically clean up, reache jars. It does NOT bump version numbers.'
+    task :rebuild_all => [:cache_and_build_win, :cache_and_build_osx]
   end
 end

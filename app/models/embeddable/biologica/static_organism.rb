@@ -1,5 +1,5 @@
 class Embeddable::Biologica::StaticOrganism < ActiveRecord::Base
-  set_table_name "embeddable_biologica_static_organisms"
+  self.table_name = "embeddable_biologica_static_organisms"
 
   
   belongs_to :user
@@ -33,10 +33,6 @@ class Embeddable::Biologica::StaticOrganism < ActiveRecord::Base
 
   send_update_events_to :investigations
 
-  def self.display_name
-    "Biologica Static Organism View"
-  end
-  
   def organisms_in_activity_scope(scope)
     if scope && scope.class != Embeddable::Biologica::StaticOrganism
       scope.activity.organisms - [self]

@@ -1,7 +1,7 @@
 require File.expand_path('../../../spec_helper', __FILE__)
 
 describe Portal::SchoolsController do
-  # integrate_views
+  # render_views
 
   def mock_school(_stubs={})
     clazzes = mock(:active => [], :length => 0, :size => 0)
@@ -11,7 +11,6 @@ describe Portal::SchoolsController do
       :district => nil,
       :children => [],
       :teacher_only? => false,
-      :authorable_in_java? => false,
       :district_id => nil,
       :nces_school_id => nil,
       :clazzes => clazzes,
@@ -34,17 +33,17 @@ describe Portal::SchoolsController do
   end
   
   before(:each) do
-    generate_default_project_and_jnlps_with_mocks
+    generate_default_settings_and_jnlps_with_mocks
     generate_portal_resources_with_mocks
     login_admin
     @school = mock_school
     @nces_school = nces_mock_school
-    @states_and_provinces = StatesAndProvinces::STATES_AND_PROVINCES.to_a
+    @states_and_provinces = ['KS', 'MA']
   end
 
   describe "GET index" do
     it "assigns all portal_schools as @portal_schools" do
-      Portal::School.stub!(:find).with(:all, hash_including(will_paginate_params)).and_return([@school])
+      Portal::School.stub!(:search).with(nil,nil,nil).and_return([@school])
       get :index
       assigns[:portal_schools].should == [@school]
     end
@@ -160,7 +159,7 @@ describe Portal::SchoolsController do
   end
   
   describe "DELETE destroy" do
-    integrate_views
+    render_views
 
     before(:each) do
       @school.stub!(:id => 1)
@@ -180,12 +179,12 @@ describe Portal::SchoolsController do
     it "renders the rjs template" do
       xhr :post, :destroy, :id => "1"
       response.should render_template('destroy')
-      response.should have_rjs
+      assert_select_rjs
     end
 
     it "the rjs response should remove a dom elemet" do
       xhr :post, :destroy, :id => "1"
-      response.should have_rjs(:remove)
+      assert_select_rjs(:remove)
     end
   end
 

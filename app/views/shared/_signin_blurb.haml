@@ -5,9 +5,8 @@
   %br
   = link_to("Student", signup_portal_students_path, :class=>'more')
   %br
-  %a{ :href=>"/portal/teachers/new", :class=>'more' }
-    Teacher
+  = link_to("Teacher", new_portal_teacher_path, :class=>'more')
 %h3
-  Just want to Try the Units?
+  Just want to try the activities?
 %p
-  =link_to "View our unit Previews", investigation_preview_list_path, {:class=>'more'}
+  =link_to "Browse instructional materials", search_path, {:class=>'more'}

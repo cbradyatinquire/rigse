@@ -1,5 +1,5 @@
 class Portal::Course < ActiveRecord::Base
-  set_table_name :portal_courses
+  self.table_name = :portal_courses
   
   acts_as_replicatable
   
@@ -29,9 +29,6 @@ class Portal::Course < ActiveRecord::Base
       @@searchable_attributes
     end
 
-    def display_name
-      "Course"
-    end
     
     
     #  for a given school_id:

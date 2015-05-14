@@ -1,5 +1,5 @@
 class Dataservice::ConsoleLogger < ActiveRecord::Base
-  set_table_name :dataservice_console_loggers
+  self.table_name = :dataservice_console_loggers
   
   has_one  :learner, :class_name => "Portal::Learner"
   has_many :console_contents, :class_name => "Dataservice::ConsoleContent", :order => :position, :dependent => :destroy
@@ -22,9 +22,6 @@ class Dataservice::ConsoleLogger < ActiveRecord::Base
       @@searchable_attributes
     end
 
-    def display_name
-      "Dataservice::ConsoleLogger"
-    end
   end
 
   # for the view system ...

@@ -1,5 +1,5 @@
 class Embeddable::Biologica::MultipleOrganism < ActiveRecord::Base
-  set_table_name "embeddable_biologica_multiple_organisms"
+  self.table_name = "embeddable_biologica_multiple_organisms"
 
   
   belongs_to :user
@@ -36,9 +36,6 @@ class Embeddable::Biologica::MultipleOrganism < ActiveRecord::Base
 
   send_update_events_to :investigations
 
-  def self.display_name
-    "Biologica Multiple Organism"
-  end
 
   def investigations
     invs = []

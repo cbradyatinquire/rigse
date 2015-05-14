@@ -4,7 +4,7 @@ require 'fileutils'
 namespace :portal do
   namespace :setup do
     
-    nces_dir = File.join(RAILS_ROOT, 'config', 'nces_data')
+    nces_dir = File.join(::Rails.root.to_s, 'config', 'nces_data')
     school_layout_file = File.join(nces_dir, 'psu061blay.txt')
     district_layout_file = File.join(nces_dir, 'pau061blay.txt')
 
@@ -13,7 +13,12 @@ namespace :portal do
     # Download NCES CCD data files from NCES website
     # 
     desc 'Download NCES CCD data files from NCES website'
-    task :download_nces_data do
+    task :download_nces_data => :environment do
+      if Portal::StateOrProvince.configured.empty?
+        puts "Not downloading NCES data because states_and_provinces is an empty array"
+        next
+      end
+
       puts <<-HEREDOC
 
 Download District and School NCES Common Core of Data files from the 
@@ -22,6 +27,7 @@ NCES website: http://nces.ed.gov/ccd/data/zip/
       HEREDOC
       FileUtils.mkdir_p(nces_dir) unless File.exists?(nces_dir)
       Dir.chdir(nces_dir) do
+        has_curl = system("which curl")
         files = [
           'http://nces.ed.gov/ccd/data/zip/sc061bai_dat.zip',
           'http://nces.ed.gov/ccd/data/zip/sc061bkn_dat.zip',
@@ -36,7 +42,11 @@ NCES website: http://nces.ed.gov/ccd/data/zip/
           if File.exists?(File.basename(url_str))
             puts "  data file already exists: #{File.basename(url_str)}"
           else
-            cmd = "wget -q -nc #{url_str}"
+            if has_curl
+              cmd = "curl -s -O #{url_str}"
+            else
+              cmd = "wget -q -nc #{url_str}"
+            end
             puts cmd
             system(cmd)
             if url_str =~ /\.zip\z/
@@ -54,6 +64,7 @@ NCES website: http://nces.ed.gov/ccd/data/zip/
     # task: portal:setup:generate_nces_tables_migration
     # Generate migration file for nces tables
     #
+    # FIXME: This is broken, but may not be needed
     desc 'Generate migration file for nces tables'
     task :generate_nces_tables_migration => :environment do
       parser = NcesParser.new(district_layout_file, school_layout_file, 2006)
@@ -64,6 +75,11 @@ NCES website: http://nces.ed.gov/ccd/data/zip/
     # task: portal:setup:generate_nces_indexes_migration
     # Generate migration file for nces indexes
     # 
+    # FIXME: This task currently fails with
+    #   "\xC2" from ASCII-8BIT to UTF-8
+    #   lib/nces_parser.rb:313:in `write'
+    # This may be fixable in a manner similar to https://github.com/concord-consortium/rigse/commit/4d78fc4ee
+    
     desc 'Generate migration file for nces indexes'
     task :generate_nces_indexes_migration => :environment do
       parser = NcesParser.new(district_layout_file, school_layout_file, 2006)
@@ -87,7 +103,8 @@ If APP_CONFIG[:states_and_provinces] is nil then data from all NCES states and p
 
       HEREDOC
 
-      states_and_provinces = APP_CONFIG[:states_and_provinces]
+      states_and_provinces = Portal::StateOrProvince.configured
+      next if states_and_provinces.empty?
       district_data_fnames = %w{ag061b.dat}
       district_data_fpaths = district_data_fnames.collect { |f| File.join(nces_dir, f) }
       school_data_fnames = %w{Sc061bai.dat Sc061bkn.dat Sc061bow.dat}
@@ -131,8 +148,8 @@ If APP_CONFIG[:states_and_provinces] is nil then data from all NCES states and p
     # 
     desc 'Create districts and schools from NCES records for States listed in settings.yml'
     task :create_districts_and_schools_from_nces_data => :environment do
-      states_and_provinces = APP_CONFIG[:states_and_provinces] || []
-      active_school_levels = APP_CONFIG[:active_school_levels] || []
+      states_and_provinces = Portal::StateOrProvince.configured
+      active_school_levels = APP_CONFIG[:active_school_levels] || ["1", "2", "3", "4"]
 
       puts <<-HEREDOC
 
@@ -158,7 +175,7 @@ The following codes were calculated from the school's corresponding GSLO and GSH
 
       HEREDOC
       
-      portal_school_field_names = [:name, :uuid, :state, :leaid_schoolnum, :zipcode, :district_id, :nces_school_id]
+      portal_school_field_names = [:name, :uuid, :state, :ncessch, :zipcode, :district_id, :nces_school_id]
       portal_district_field_names = [:name, :uuid, :state, :leaid, :zipcode, :nces_district_id]
       import_options = { :validate => false }
 
@@ -166,7 +183,7 @@ The following codes were calculated from the school's corresponding GSLO and GSH
         count = 0
         school_values = []
         district_values = []
-        state_province_str = "#{state}, #{StatesAndProvinces::STATES_AND_PROVINCES[state]}"
+        state_province_str = "#{state}, #{Portal::StateOrProvince::STATES_AND_PROVINCES[state]}"
         nces_districts = Portal::Nces06District.find(:all, :conditions => { :MSTATE => state }, :select => "id, NAME, LEAID, LZIP, LSTATE")
         if nces_districts.empty?
           puts "\n*** No NCES districts found in state/province: #{state_province_str}"
@@ -213,5 +230,13 @@ The following codes were calculated from the school's corresponding GSLO and GSH
         end
       end
     end
+  end
+
+  # Not a setup-task, import all schools, try to avoid re-importing existing districts.
+  desc "import all nces (nationaL) districst missing from portal districts. Will result in one portal district per nces district"
+  task :import_all_national_districts => :environment do
+    imp = NationalDistrictImporter.new
+    imp.load_districts
+    imp.load_schools
   end
 end

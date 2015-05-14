@@ -1,0 +1,31 @@
+- assigned_successful_clazzes = summary_data.select{|item| item[1].length > 0}
+- already_assigned_clazzes = summary_data.select{|item| item[2].length > 0}
+- if assigned_successful_clazzes.length > 0
+  .assign_class_header
+    Assigned successfully
+    .assigned_classes_container.webkit_scrollbars
+      %ul
+        - assigned_successful_clazzes.each do|summary_item|
+          %li
+            .class_name
+              = summary_item[0]
+            .assign_material_list
+              = summary_item[1].join(', ')
+- if already_assigned_clazzes.length > 0
+  .assign_class_header
+    Please note that some of the activities were already assigned and were not re-assigned.
+    = link_to "More Information","javascript:void(0)",:onclick=>"$('prev_assigned_classes_div').toggle();setPopupHeight()"
+    .assigned_classes_container.webkit_scrollbars{:id=>"prev_assigned_classes_div",:style=>"display:none"}
+      %ul
+        - already_assigned_clazzes.each do|summary_item|
+          %li{:style=>"padding-top:8px;"}
+            .class_name
+              = summary_item[0]
+            .assign_material_list
+              = summary_item[2].join(', ')
+%br
+%table{:style=>"width:100%"}
+  %tr
+    %td{:style=>"text-align: center;"}
+      = link_to "OK", "#",:href=>"javascript: void(0);",:onclick=>"close_popup()",:class=>"button"
+%div{:style=>"clear:both"}

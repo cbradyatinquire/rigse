@@ -1,0 +1,50 @@
+sudo: false # see: http://docs.travis-ci.com/user/workers/container-based-infrastructure/
+language: ruby
+rvm:
+  - "1.9.3"
+
+env:
+  matrix:
+  - RAILS_ENV=test TEST_SUITE=spec
+  - RAILS_ENV=cucumber TEST_SUITE=cucumber
+  global:
+  - secure: fBn66dqLiQa0W1eDAV/ZZKgA4K3OogG9WG/9lyd81csj9YGtHnE91YlzHLH25oyMWg53nGYEcUlLnPYFw7mqdFJ48AJ5sMaplIqmBMmb9OnpUpYc1sds3wvi81TmTAT0ColdBtgdSBCjIPTr2AuieBJgR8dqPpT/uXg30meZg/g=
+  - secure: ebGYa+ExFODy1+aVIrppCkyuO/z4RLBHQ8oGE7+h4a3Hdzxx4kSvfRt3nIeklMpTBt0M55hpY/MnZxHt1N0fhSkqfjeJrsYaagatBXezPiW34ZZCbS2E/pJ3pYiL2zzZS3hER30oGGNthYXuU3LI8gjLL8NHXvg5dxrHVaQeD1M=
+  - ARTIFACTS_BUCKET=cc-travis-artifacts
+
+before_install:
+  - "export DISPLAY=:99.0"
+  - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1920x1080x16"
+
+before_script:
+  - cp config/database.travis.yml config/database.yml
+  - cp config/app_environment_variables.sample.rb config/app_environment_variables.rb
+  - cp config/settings.sample.yml config/settings.yml
+  - cp config/sis_import_data.sample.yml config/sis_import_data.yml
+  - cp config/initializers/site_keys.rb.sample config/initializers/site_keys.rb
+  - mysql -e "create database rigse_test;"
+  - bundle exec spring binstub --all
+  - ./bin/rake db:schema:load
+  - ./bin/rake db:migrate
+  - ./bin/rake db:test:prepare
+  - RAILS_GROUPS=assets ./bin/rake assets:precompile:all
+
+# uncomment this line if your project needs to run something other than `rake`:
+script: ./bin/rake $TEST_SUITE
+
+cache: bundler
+
+bundler_args: --binstubs --without development
+
+addons:
+  artifacts:
+    paths:
+    - ./tmp/capybara
+  code_climate:
+    repo_token: 555af44da071264ef9c30bc5d16bcaceee2b8c2e40cccdbc74fc2b7db9839a92
+
+# blacklist - these branches aren't feature branches and shouldn't be getting direct commits
+# branches:
+#   except:
+#     - staging
+#     - production
