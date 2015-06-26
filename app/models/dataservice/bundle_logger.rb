@@ -1,10 +1,11 @@
 class Dataservice::BundleLogger < ActiveRecord::Base
-  set_table_name :dataservice_bundle_loggers
+  self.table_name = :dataservice_bundle_loggers
   
   has_one    :learner, :class_name => "Portal::Learner"
   belongs_to :in_progress_bundle, :class_name => "Dataservice::BundleContent"
   has_many   :bundle_contents, :class_name => "Dataservice::BundleContent", :order => :position, :dependent => :destroy
   
+  has_many :launch_process_events, :class_name => "Dataservice::LaunchProcessEvent", :through => :bundle_contents, :order => "id ASC"
 
   has_one :last_non_empty_bundle_content, 
     :class_name => "Dataservice::BundleContent",
@@ -53,9 +54,6 @@ class Dataservice::BundleLogger < ActiveRecord::Base
       @@searchable_attributes
     end
 
-    def display_name
-      "Dataservice::BundleLogger"
-    end
   end
   
   # for the view system ...

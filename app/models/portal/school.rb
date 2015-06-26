@@ -1,22 +1,23 @@
 class Portal::School < ActiveRecord::Base
-  set_table_name :portal_schools
+  self.table_name = :portal_schools
   has_settings
 
   acts_as_replicatable
 
   belongs_to :district, :class_name => "Portal::District", :foreign_key => "district_id"
   belongs_to :nces_school, :class_name => "Portal::Nces06School", :foreign_key => "nces_school_id"
+  belongs_to :country, :class_name => "Portal::Country", :foreign_key => "country_id"
 
   has_many :courses, :dependent => :destroy, :class_name => "Portal::Course", :foreign_key => "school_id"
   has_many :semesters, :dependent => :destroy, :class_name => "Portal::Semester", :foreign_key => "school_id"
 
   # has_many :grade_levels, :class_name => "Portal::GradeLevel", :foreign_key => "school_id"
 
-  has_many :grade_levels, :as => :has_grade_levels, :class_name => "Portal::GradeLevel"
+  has_many :grade_levels, :dependent => :destroy, :as => :has_grade_levels, :class_name => "Portal::GradeLevel"
   has_many :grades, :through => :grade_levels, :class_name => "Portal::Grade"
   # has_many :clazzes, :through => :courses, :class_name => "Portal::Clazz"
 
-  has_many :clazzes, :through => :courses, :class_name => "Portal::Clazz" do
+  has_many :clazzes, :dependent => :destroy, :through => :courses, :class_name => "Portal::Clazz" do
     def active
       find(:all) & Portal::Clazz.has_offering
     end
@@ -36,10 +37,11 @@ class Portal::School < ActiveRecord::Base
   #
   
   # has_many_polymorphs :members, :from => [:"portal/teachers", :"portal/students"], :through => :"portal/members"
-  has_many :portal_teachers, :through => :members, :source => "teacher"
+  has_many :portal_teachers, :through => :members, :source => 'member', :source_type => "Portal::Teacher"
   alias :teachers :portal_teachers
-  named_scope :real,    { :conditions => 'nces_school_id is NOT NULL' }  
-  named_scope :virtual, { :conditions => 'nces_school_id is NULL' }  
+  scope :real,    { :conditions => 'nces_school_id is NOT NULL' }  
+  scope :virtual, { :conditions => 'nces_school_id is NULL' }  
+  scope :has_teachers, joins(:members).group(:school_id)
 
   # TODO: Maybe this?  But also maybe nces_id.nil? technique instead??
   [:virtual?, :real?].each {|method| delegate method, :to=> :district }
@@ -54,10 +56,6 @@ class Portal::School < ActiveRecord::Base
   class <<self
     def searchable_attributes
       @@searchable_attributes
-    end
-
-    def display_name
-      "School"
     end
 
     ##
@@ -112,6 +110,26 @@ class Portal::School < ActiveRecord::Base
         found_instance = create!(attributes)
       end
       found_instance
+    end
+
+    def find_by_similar_or_new(attrs,username='automatic process')
+      found = Portal::School.find(:first, :conditions => attrs)
+      unless found
+        attrs[:description] ||= "created by #{username}"
+        found = Portal::School.new(attrs)
+      end
+      return found
+    end
+
+    def find_by_similar_name_or_new(name,username='automatic process',district=Portal::District.default)
+      sql = "SELECT id, name FROM portal_schools where district_id=?"
+      all_names = Portal::School.find_by_sql [sql,district.id]
+      found = all_names.detect { |s| s.name.upcase.gsub(/[^A-Z]/,'') == name.upcase.gsub(/[^A-Z]/,'') }
+      unless found
+        found = Portal::School.new(:name => name, :description => "#{name} created by #{username}")
+        found.district = district
+      end
+      return found
     end
 
   end

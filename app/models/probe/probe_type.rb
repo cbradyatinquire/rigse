@@ -1,11 +1,9 @@
 class Probe::ProbeType < ActiveRecord::Base
-  set_table_name "probe_probe_types"
+  self.table_name = "probe_probe_types"
 
   include Changeable
   
   acts_as_replicatable
-
-  has_many :activities, :class_name => "Itsi::Activity"
 
   belongs_to :user
   

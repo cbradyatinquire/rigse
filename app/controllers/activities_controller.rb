@@ -1,9 +1,7 @@
 class ActivitiesController < ApplicationController
   # GET /pages
   # GET /pages.xml
-  prawnto :prawn=>{
-    :page_layout=>:landscape,
-  }
+
   before_filter :setup_object, :except => [:index]
   before_filter :render_scope, :only => [:show]
   # editing / modifying / deleting require editable-ness
@@ -12,12 +10,12 @@ class ActivitiesController < ApplicationController
 
   in_place_edit_for :activity, :name
   in_place_edit_for :activity, :description
-
+  include ControllerParamUtils
 
   protected
 
   def can_create
-    if (current_user.anonymous?)
+    if (current_visitor.anonymous?)
       flash[:error] = "Anonymous users can not create activities"
       redirect_back_or activities_path
     end
@@ -29,8 +27,8 @@ class ActivitiesController < ApplicationController
 
   def can_edit
     if defined? @activity
-      unless @activity.changeable?(current_user)
-        error_message = "you (#{current_user.login}) can not #{action_name.humanize} #{@activity.name}"
+      unless @activity.changeable?(current_visitor)
+        error_message = "you (#{current_visitor.login}) can not #{action_name.humanize} #{@activity.name}"
         flash[:error] = error_message
         if request.xhr?
           render :text => "<div class='flash_error'>#{error_message}</div>"
@@ -44,7 +42,7 @@ class ActivitiesController < ApplicationController
 
   def setup_object
     if params[:id]
-      if params[:id].length == 36
+      if valid_uuid(params[:id])
         @activity = Activity.find(:first, :conditions => ['uuid=?',params[:id]])
       else
         @activity = Activity.find(params[:id])
@@ -66,23 +64,22 @@ class ActivitiesController < ApplicationController
   public
 
   def index
-    @include_drafts = params[:include_drafts]
-    @name = param_find(:name)
-    pagenation = params[:page]
-    if (pagenation)
-      @include_drafts = param_find(:include_drafts)
-    else
-      @include_drafts = param_find(:include_drafts,true)
-    end
-    @activities = Activity.search_list({
-      :name => @name,
-      :paginate => true,
-      :page => pagenation
-    })
+    search_params = {
+      :material_types     => [Search::ActivityMaterial],
+      :activity_page      => params[:page],
+      :per_page           => 30,
+      :user_id            => current_visitor.id,
+      :grade_span         => params[:grade_span],
+      :private            => current_visitor.has_role?('admin'),
+      :search_term        => params[:search]
+    }
+
+    s = Search.new(search_params)
+    @activities = s.results[Search::ActivityMaterial]
+
     if params[:mine_only]
-      @activities = @activities.reject { |i| i.user.id != current_user.id }
+      @activities = @activities.reject { |i| i.user.id != current_visitor.id }
     end
-    @paginated_objects = @activities
 
     if request.xhr?
       render :partial => 'activities/runnable_list', :locals => {:activities => @activities, :paginated_objects =>@activities}
@@ -99,7 +96,7 @@ class ActivitiesController < ApplicationController
   # GET /pages/1
   # GET /pages/1.xml
   def show
-    @teacher_mode = params[:teacher_mode] || @activity.teacher_only
+    @teacher_mode = boolean_param(:teacher_mode) || @activity.teacher_only
     respond_to do |format|
       format.html {
         if params['print']
@@ -107,9 +104,21 @@ class ActivitiesController < ApplicationController
         end
       }
       format.run_html   { render :show, :layout => "layouts/run" }
-      format.jnlp   { render :partial => 'shared/show', :locals => { :runnable => @activity, :teacher_mode => @teacher_mode } }
+      format.jnlp   {
+        render :partial => 'shared/installer', :locals => { :runnable => @activity, :teacher_mode => @teacher_mode }
+      }
       format.config { render :partial => 'shared/show', :locals => { :runnable => @activity, :teacher_mode => @teacher_mode, :session_id => (params[:session] || request.env["rack.session.options"][:id]) } }
-      format.dynamic_otml { render :partial => 'shared/show', :locals => {:runnable => @activity, :teacher_mode => @teacher_mode} }
+      format.dynamic_otml {
+        learner = (params[:learner_id] ? Portal::Learner.find(params[:learner_id]) : nil)
+        if learner && learner.bundle_logger.in_progress_bundle
+          launch_event = Dataservice::LaunchProcessEvent.create(
+            :event_type => Dataservice::LaunchProcessEvent::TYPES[:activity_otml_requested],
+            :event_details => "Activity content loaded. Activity should now be running...",
+            :bundle_content => learner.bundle_logger.in_progress_bundle
+          )
+        end
+        render :partial => 'shared/show', :locals => {:runnable => @activity, :teacher_mode => @teacher_mode}
+      }
       format.otml { render :layout => 'layouts/activity' } # activity.otml.haml
       format.xml  { render :xml => @activity }
       format.pdf {render :layout => false }
@@ -120,7 +129,7 @@ class ActivitiesController < ApplicationController
   # GET /pages/new.xml
   def new
     @activity = Activity.new
-    @activity.user = current_user
+    @activity.user = current_visitor
     respond_to do |format|
       format.html # new.html.erb
       format.xml  { render :xml => @activity }
@@ -139,7 +148,23 @@ class ActivitiesController < ApplicationController
   # POST /pages.xml
   def create
     @activity = Activity.new(params[:activity])
-    @activity.user = current_user
+    @activity.user = current_visitor
+
+    if params[:update_cohorts]
+      # set the cohort tags
+      @activity.cohort_list = (params[:cohorts] || [])
+    end
+
+    if params[:update_grade_levels]
+      # set the grade_level tags
+      @activity.grade_level_list = (params[:grade_levels] || [])     
+    end
+
+    if params[:update_subject_areas]
+      # set the subject_area tags
+      @activity.subject_area_list = (params[:subject_areas] || [])
+    end
+
     respond_to do |format|
       if @activity.save
         format.js  # render the js file
@@ -158,6 +183,25 @@ class ActivitiesController < ApplicationController
   def update
     cancel = params[:commit] == "Cancel"
     @activity = Activity.find(params[:id])
+
+    if params[:update_cohorts]
+      # set the cohort tags
+      @activity.cohort_list = (params[:cohorts] || [])
+      @activity.save
+    end
+    
+    if params[:update_grade_levels]
+      # set the grade_level tags
+      @activity.grade_level_list = (params[:grade_levels] || [])
+      @activity.save
+    end
+
+    if params[:update_subject_areas]
+      # set the subject_area tags
+      @activity.subject_area_list = (params[:subject_areas] || [])
+      @activity.save
+    end
+
     if request.xhr?
       if cancel || @activity.update_attributes(params[:activity])
         render :partial => 'shared/activity_header', :locals => { :activity => @activity }
@@ -199,7 +243,7 @@ class ActivitiesController < ApplicationController
   def add_section
     @section = Section.create
     @section.activity = @activity
-    @section.user = current_user
+    @section.user = current_visitor
     @section.save
     redirect_to @section
   end
@@ -230,9 +274,9 @@ class ActivitiesController < ApplicationController
   ##
   def duplicate
     @original = Activity.find(params['id'])
-    @activity = @original.deep_clone :no_duplicates => true, :never_clone => [:uuid, :created_at, :updated_at], :include => {:sections => {:pages => {:page_elements => :embeddable}}}
+    @activity = @original.deep_clone :no_duplicates => true, :never_clone => [:uuid, :created_at, :updated_at], :include => {:sections => :pages}
     @activity.name = "copy of #{@activity.name}"
-    @activity.deep_set_user current_user
+    @activity.deep_set_user current_visitor
     @activity.save
     flash[:notice] ="Copied #{@original.name}"
     redirect_to url_for(@activity)
@@ -249,15 +293,15 @@ class ActivitiesController < ApplicationController
   # In an Activities controller, we only accept section clipboard data,
   #
   def paste
-    if @activity.changeable?(current_user)
+    if @activity.changeable?(current_visitor)
       @original = clipboard_object(params)
       if (@original)
-        @component = @original.deep_clone :no_duplicates => true, :never_clone => [:uuid, :updated_at,:created_at], :include => {:pages => {:page_elements => :embeddable}}
+        @component = @original.deep_clone :no_duplicates => true, :never_clone => [:uuid, :updated_at,:created_at], :include => :pages
         if (@component)
           # @component.original = @original
           @container = params[:container] || 'activity_sections_list'
           @component.name = "copy of #{@component.name}"
-          @component.deep_set_user current_user
+          @component.deep_set_user current_visitor
           @component.activity = @activity
           @component.save
         end

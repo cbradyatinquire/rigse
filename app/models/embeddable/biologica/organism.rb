@@ -1,5 +1,5 @@
 class Embeddable::Biologica::Organism < ActiveRecord::Base
-  set_table_name "embeddable_biologica_organisms"
+  self.table_name = "embeddable_biologica_organisms"
 
   
   belongs_to :user
@@ -70,9 +70,6 @@ end
   default_value_for :sex, -1
   default_value_for :fatal_characteristics, true
 
-  def self.display_name
-    "Biologica Organism"
-  end
   
   
   def self.male

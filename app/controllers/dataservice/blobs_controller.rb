@@ -16,7 +16,7 @@ class Dataservice::BlobsController < ApplicationController
   end
   
   def is_admin?
-    return (current_user != nil && current_user.has_role?('admin'))
+    return (current_visitor != nil && current_visitor.has_role?('admin'))
   end
   
   public
@@ -36,7 +36,7 @@ class Dataservice::BlobsController < ApplicationController
   # GET /dataservice_blobs/1.xml
   def show
     @dataservice_blob = Dataservice::Blob.find(params[:id])
-    is_authorized = is_admin? || (@dataservice_blob && @dataservice_blob.token == params[:token]) || current_user.has_role?('researcher')
+    is_authorized = is_admin? || (@dataservice_blob && @dataservice_blob.token == params[:token]) || current_visitor.has_role?('researcher')
     
     respond_to do |format|
       format.html {
@@ -53,13 +53,11 @@ class Dataservice::BlobsController < ApplicationController
           login_redirect
         end
       }
+      format.png  {
+        _handle_rendering_blob(is_authorized)
+      }
       format.blob  {
-        if is_authorized
-          type = params[:mimetype] ? params[:mimetype] : @dataservice_blob.mimetype
-          send_data(@dataservice_blob.content, :type => type, :filename => "file", :disposition => 'inline' )
-        else
-          render :text => "<error>Forbidden</error>", :status => :forbidden  # Forbidden
-        end
+        _handle_rendering_blob(is_authorized)
       }
     end
   end
@@ -123,6 +121,17 @@ class Dataservice::BlobsController < ApplicationController
     respond_to do |format|
       format.html { redirect_to(dataservice_blobs_url) }
       format.xml  { head :ok }
+    end
+  end
+
+  private
+
+  def _handle_rendering_blob(is_authorized)
+    if is_authorized
+      type = params[:mimetype] ? params[:mimetype] : @dataservice_blob.mimetype
+      send_data(@dataservice_blob.content, :type => type, :filename => "file", :disposition => 'inline' )
+    else
+      render :text => "<error>Forbidden</error>", :status => :forbidden  # Forbidden
     end
   end
 end

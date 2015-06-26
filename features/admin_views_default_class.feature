@@ -6,7 +6,8 @@ Feature: Admin views default class
 
   Scenario: Admin views default class
     Given the default class is created
-    When I login as an admin
+    And the database has been seeded
+    And I am logged in with the username admin
     And go to the class page for "Default Class"
     Then I should see "Default Class"
     

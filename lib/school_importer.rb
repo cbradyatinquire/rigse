@@ -8,6 +8,7 @@
 
 require 'fileutils'
 require 'arrayfields'
+require 'csv'
 
 class SchoolImporter
   attr_accessor :import_data
@@ -16,7 +17,7 @@ class SchoolImporter
   attr_accessor :districts
 
   CVS_COLUMNS = [:district_name, :school_name]        # format of import CSV data
-  BASE_DIR = "#{RAILS_ROOT}"                          # where to look for the file
+  BASE_DIR = "#{::Rails.root.to_s}"                          # where to look for the file
   DEFAULT_FILENAME = "resources/CohortSchools2010.csv"# a sample file
 
   def self.run(filename=DEFAULT_FILENAME, delete_others=false)
@@ -64,7 +65,7 @@ class SchoolImporter
   end
   
   def add_csv_row(line)
-    FasterCSV.parse(line) do |row|
+    CSV.parse(line) do |row|
       if row.class == Array
         row.fields = CVS_COLUMNS
         school_for(row)

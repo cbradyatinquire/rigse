@@ -1,21 +1,38 @@
-set :stages, %w(
-  rites-dev rites-staging rites-production
-  itsisu-dev itsisu-staging itsisu-production
-  smartgraphs-dev smartgraphs-staging smartgraphs-production
-  has-dev has-staging has-production
-  geniverse-dev geniverse-production
-  assessment-dev assessment-staging assessment-production
-  xproject-dev
-  genomedynamics-dev genomedynamics-staging genomedynamics-production
-  fall2009 jnlp-staging seymour
-  sparks-dev sparks-staging sparks-production)
-set :default_stage, "development"
-# require File.expand_path("#{File.dirname(__FILE__)}/../vendor/gems/capistrano-ext-1.2.1/lib/capistrano/ext/multistage")
-require 'capistrano/ext/multistage'
-require 'haml'
-
-require 'lib/yaml_editor'
 require "bundler/capistrano"
+require 'capistrano/ext/multistage'
+require 'capistrano/cowboy'
+
+# experimental: create autoscaling instances from EC2 instance
+require "capistrano-autoscaling"
+
+
+
+
+require 'haml'
+require File.expand_path('../../lib/yaml_editor', __FILE__)
+
+set :stages, %w(
+  rites-staging rites-production rites-ri-production
+  itsisu-dev itsisu-staging itsisu-production
+  smartgraphs-staging smartgraphs-production smartgraphs-aws1
+  has-dev has-staging has-production has-aws1
+  geniverse-dev geniverse-production
+  geniverse-aws-testing geniverse-aws-production
+  genigames-baseline-production genigames-ungamed-production
+  genigames-dev genigames-staging genigames-production
+  interactions-staging interactions-production
+  genomedynamics-dev genomedynamics-staging
+  sparks-dev sparks-staging sparks-production sparks-aws1
+  learn-staging learn-production
+  ngss-assessment-staging ngss-assessment-production
+  codap-production
+  xproject-dev
+  inquiryspace-production inquiryspace-staging)
+
+set :default_stage, "development"
+
+set :rake,           "bundle exec rake"
+
 def render(file,opts={})
   template = File.read(file)
   haml_engine = Haml::Engine.new(template)
@@ -23,19 +40,32 @@ def render(file,opts={})
   output
 end
 
+def run_remote_rake(taskname, ignore_fail=false)
+    run "cd #{deploy_to}/#{current_dir} && " +
+    "bundle exec rake RAILS_ENV=#{rails_env} #{taskname} --trace" +
+    (ignore_fail ? "; true" : "")
+end
+
 #############################################################
 #  Maintenance mode
 #############################################################
 task :disable_web, :roles => :web do
-  on_rollback { delete "#{shared_path}/system/maintenance.html" }
+  on_rollback { delete "#{shared_path}/system/maintenance.html"    }
+
+  site_name = ask("site name? ") { |q| q.default = "RITES"         }
+  back_up   = ask("back up?   ") { |q| q.default = "in 12 minutes" }
+  message   = ask("message?   ") { |q| q.default = ""              }
 
   maintenance = render("./app/views/layouts/maintenance.haml",
                        {
-                         :back_up => ENV['BACKUP'],
-                         :reason => ENV['REASON'],
-                         :message => ENV['MESSAGE']
+                         :back_up   => back_up,
+                         :message   => message,
+                         :site_name => site_name
                        })
 
+  # File.open(File.expand_path("~/Desktop/index.html"),"w") do |f|
+  #   f.write(maintenance)
+  # end
   run "mkdir -p #{shared_path}/system/"
   put maintenance, "#{shared_path}/system/maintenance.html",
                    :mode => 0644
@@ -79,7 +109,7 @@ end
 set(:scm_passphrase) do
   Capistrano::CLI.password_prompt( "Enter your git password: ")
 end
-set :repository, "git://github.com/stepheneb/rigse.git"
+set :repository, "git://github.com/concord-consortium/rigse.git"
 set :deploy_via, :remote_cache
 
 #############################################################
@@ -150,16 +180,6 @@ namespace :db do
     remote_db_cleanup
   end
 
-  desc 'Copies config/initializers/site_keys.rb from the remote environment to your local machine'
-  task :fetch_remote_site_keys, :roles => :app do
-    download("#{deploy_to}/shared/config/initializers/site_keys.rb", "config/initializers/site_keys.rb", :via => :sftp)
-  end
-
-  desc 'Copies config/initializers/site_keys.rb from the remote environment to your local machine'
-  task :push_local_site_keys, :roles => :app do
-    upload("config/initializers/site_keys.rb", "#{deploy_to}/shared/config/initializers/site_keys.rb", :via => :sftp)
-  end
-
   desc "Pulls uploaded attachments from the remote server"
   task :fetch_remote_attachments, :roles => :web do
     remote_dir  = "#{shared_path}/system/attachments/"
@@ -203,25 +223,31 @@ namespace :deploy do
 
   desc "setup directory remote directory structure"
   task :make_directory_structure do
-    run "mkdir -p #{deploy_to}/releases"
-    run "mkdir -p #{shared_path}"
-    run "mkdir -p #{shared_path}/config"
-    run "mkdir -p #{shared_path}/log"
-    run "mkdir -p #{shared_path}/rinet_data"
-    run "mkdir -p #{shared_path}/config/nces_data"
-    run "mkdir -p #{shared_path}/public/otrunk-examples"
-    run "mkdir -p #{shared_path}/public/sparks-content"
-    run "mkdir -p #{shared_path}/public/installers"
-    run "mkdir -p #{shared_path}/config/initializers"
-    run "mkdir -p #{shared_path}/system/attachments" # paperclip file attachment location
-    run "touch #{shared_path}/config/database.yml"
-    run "touch #{shared_path}/config/settings.yml"
-    run "touch #{shared_path}/config/installer.yml"
-    run "touch #{shared_path}/config/rinet_data.yml"
-    run "touch #{shared_path}/config/mailer.yml"
-    run "touch #{shared_path}/config/initializers/site_keys.rb"
-    run "touch #{shared_path}/config/initializers/subdirectory.rb"
-    run "touch #{shared_path}/config/database.yml"
+    run <<-CMD
+      mkdir -p #{deploy_to}/releases &&
+      mkdir -p #{shared_path} &&
+      mkdir -p #{shared_path}/config &&
+      mkdir -p #{shared_path}/log &&
+      mkdir -p #{shared_path}/pids &&
+      mkdir -p #{shared_path}/sis_import_data &&
+      mkdir -p #{shared_path}/config/nces_data &&
+      mkdir -p #{shared_path}/public/otrunk-examples &&
+      mkdir -p #{shared_path}/public/installers &&
+      mkdir -p #{shared_path}/config/initializers &&
+      mkdir -p #{shared_path}/system/attachments &&
+      mkdir -p #{shared_path}/solr/data &&
+      mkdir -p #{shared_path}/solr/pids &&
+      touch #{shared_path}/config/database.yml &&
+      touch #{shared_path}/config/settings.yml &&
+      touch #{shared_path}/config/installer.yml &&
+      touch #{shared_path}/config/sis_import_data.yml &&
+      touch #{shared_path}/config/mailer.yml &&
+      touch #{shared_path}/config/initializers/site_keys.rb &&
+      touch #{shared_path}/config/initializers/subdirectory.rb &&
+      touch #{shared_path}/config/database.yml &&
+      touch #{shared_path}/config/google_analytics.yml
+      touch #{shared_path}/config/padlet.yml
+    CMD
 
     # support for running a SproutCore app from within the public directory
     run "mkdir -p #{shared_path}/public/static"
@@ -230,26 +256,36 @@ namespace :deploy do
 
   desc "link in some shared resources, such as database.yml"
   task :shared_symlinks do
-    run "ln -nfs #{shared_path}/config/database.yml #{release_path}/config/database.yml"
-    run "ln -nfs #{shared_path}/config/settings.yml #{release_path}/config/settings.yml"
-    run "ln -nfs #{shared_path}/config/installer.yml #{release_path}/config/installer.yml"
-    run "ln -nfs #{shared_path}/config/rinet_data.yml #{release_path}/config/rinet_data.yml"
-    run "ln -nfs #{shared_path}/config/mailer.yml #{release_path}/config/mailer.yml"
-    run "ln -nfs #{shared_path}/config/initializers/site_keys.rb #{release_path}/config/initializers/site_keys.rb"
-    run "ln -nfs #{shared_path}/config/initializers/subdirectory.rb #{release_path}/config/initializers/subdirectory.rb"
-    run "ln -nfs #{shared_path}/public/otrunk-examples #{release_path}/public/otrunk-examples"
-    run "ln -nfs #{shared_path}/public/sparks-content #{release_path}/public/sparks-content"
-    run "ln -nfs #{shared_path}/public/installers #{release_path}/public/installers"
-    run "ln -nfs #{shared_path}/config/nces_data #{release_path}/config/nces_data"
-    run "ln -nfs #{shared_path}/rinet_data #{release_path}/rinet_data"
-    run "ln -nfs #{shared_path}/system #{release_path}/public/system" # paperclip file attachment location
+    run <<-CMD
+      ln -nfs #{shared_path}/config/database.yml #{release_path}/config/database.yml &&
+      ln -nfs #{shared_path}/config/settings.yml #{release_path}/config/settings.yml &&
+      ln -nfs #{shared_path}/config/installer.yml #{release_path}/config/installer.yml &&
+      ln -nfs #{shared_path}/config/paperclip.yml #{release_path}/config/paperclip.yml &&
+      ln -nfs #{shared_path}/config/aws_s3.yml #{release_path}/config/aws_s3.yml &&
+      ln -nfs #{shared_path}/config/newrelic.yml #{release_path}/config/newrelic.yml &&
+      ln -nfs #{shared_path}/config/padlet.yml #{release_path}/config/padlet.yml &&
+      ln -nfs #{shared_path}/config/sis_import_data.yml #{release_path}/config/sis_import_data.yml &&
+      ln -nfs #{shared_path}/config/mailer.yml #{release_path}/config/mailer.yml &&
+      ln -nfs #{shared_path}/config/initializers/site_keys.rb #{release_path}/config/initializers/site_keys.rb &&
+      ln -nfs #{shared_path}/config/initializers/subdirectory.rb #{release_path}/config/initializers/subdirectory.rb &&
+      ln -nfs #{shared_path}/public/otrunk-examples #{release_path}/public/otrunk-examples &&
+      ln -nfs #{shared_path}/public/installers #{release_path}/public/installers &&
+      ln -nfs #{shared_path}/config/nces_data #{release_path}/config/nces_data &&
+      ln -nfs #{shared_path}/sis_import_data #{release_path}/sis_import_data &&
+      ln -nfs #{shared_path}/system #{release_path}/public/system &&
+      ln -nfs #{shared_path}/solr/data #{release_path}/solr/data &&
+      ln -nfs #{shared_path}/solr/pids #{release_path}/solr/pids &&
+      ln -nfs #{shared_path}/config/app_environment_variables.rb #{release_path}/config/app_environment_variables.rb
+    CMD
     # This is part of the setup necessary for using newrelics reporting gem
     # run "ln -nfs #{shared_path}/config/newrelic.yml #{release_path}/config/newrelic.yml"
-    run "ln -nfs #{shared_path}/config/newrelic.yml #{release_path}/config/newrelic.yml"
+    run "ln -nfs #{shared_path}/config/google_analytics.yml #{release_path}/config/google_analytics.yml"
 
     # support for running SproutCore app from the public directory
     run "ln -nfs #{shared_path}/public/static #{release_path}/public/static"
     run "cd #{release_path}/public; for i in `ls #{shared_path}/public/labels`; do rm $i; ln -s #{shared_path}/public/labels/$i $i; done"
+
+    # by default capistrano creates symlinks for tmp/pids->pids, public/system->system, and log->log
   end
 
   desc "install required gems for application"
@@ -267,12 +303,37 @@ namespace :deploy do
     # sudo "chmod -R g+rw #{shared_path}/system/attachments"
   end
 
-  desc "Create asset packages for production"
-  task :create_asset_packages, :roles => :app do
-    run "cd #{deploy_to}/current && bundle exec compass --sass-dir public/stylesheets/sass/ --css-dir public/stylesheets/ -s compact --force"
-    run "cd #{deploy_to}/current && bundle exec rake asset:packager:build_all --trace"
+  # asset compilation included in Capfile load 'deploy/assets'
+  # desc "Create asset packages for production"
+  # task :create_asset_packages, :roles => :app do
+  #   # run "cd #{deploy_to}/current && bundle exec compass compile --sass-dir public/stylesheets/scss/ --css-dir public/stylesheets/ -s compact --force"
+  #   run "cd #{deploy_to}/current && bundle exec rake assets:precompile --trace"
+  # end
+end
+
+namespace :setup do
+  desc "ensure that the database exists, is migrated and has default users, roles, projects, etc"
+  task :init_database, :roles => :app do
+    run_remote_rake "db:create"
+    run_remote_rake "db:migrate"
+    run_remote_rake "app:setup:default_users_roles"
+    run_remote_rake "app:setup:default_settings"
+    run_remote_rake "sunspot:solr:start", true
+    run_remote_rake "app:setup:default_portal_resources"
   end
 
+   # 2013_04_01 NP:
+  desc "ensure that one default project exists"
+  task :create_default_settings, :roles => :app do
+    run_remote_rake "app:setup:default_settings"
+  end
+
+  desc "setup the NCES districts: download and configure NCES districts"
+  task :districts, :roles => :app do
+    run_remote_rake "portal:setup:download_nces_data --trace"  
+    run_remote_rake "portal:setup:import_nces_from_files --trace"
+    run_remote_rake "portal:setup:create_districts_and_schools_from_nces_data --trace"
+  end 
 end
 
 #############################################################
@@ -287,30 +348,6 @@ namespace :import do
       "bundle exec rake RAILS_ENV=#{rails_env} app:setup:import_gses_from_file --trace"
   end
 
-  desc 'erase and import ITSI activities from the ITSI DIY'
-  task :erase_and_import_itsi_activities, :roles => :app do
-    run "cd #{deploy_to}/#{current_dir} && " +
-      "bundle exec rake RAILS_ENV=#{rails_env} app:import:erase_and_import_itsi_activities --trace"
-  end
-
-  desc 'erase and import ITSI Activities from the ITSI DIY collected as Units from the CCPortal'
-  task :erase_and_import_ccp_itsi_units, :roles => :app do
-    run "cd #{deploy_to}/#{current_dir} && " +
-      "bundle exec rake RAILS_ENV=#{rails_env} app:import:erase_and_import_ccp_itsi_units --trace"
-  end
-
-  desc "generate names for existing MavenJnlpServers that don't have them"
-  task :generate_names_for_maven_jnlp_servers, :roles => :app do
-    run "cd #{deploy_to}/#{current_dir} && " +
-      "bundle exec rake RAILS_ENV=#{rails_env} app:jnlp:generate_names_for_maven_jnlp_servers --trace"
-  end
-
-  desc "generate MavenJnlp resources from jnlp servers in settings.yml"
-  task :generate_maven_jnlp_resources, :roles => :app do
-    run "cd #{deploy_to}/#{current_dir} && " +
-      "bundle exec rake RAILS_ENV=#{rails_env} app:jnlp:generate_maven_jnlp_resources --trace"
-  end
-
   desc"Generate OtrunkExamples:: Rails models from the content in the otrunk-examples dir."
   task :generate_otrunk_examples_rails_models, :roles => :app do
     run "cd #{deploy_to}/#{current_dir} && " +
@@ -322,7 +359,7 @@ namespace :import do
     run "cd #{shared_path} && " +
       "mkdir -p public && " +
       "cd public && " +
-      "git clone git://github.com/stepheneb/otrunk-examples.git"
+      "git clone git://github.com/concord-consortium/otrunk-examples.git"
   end
 
   desc"Download nces data files from NCES websites"
@@ -344,18 +381,15 @@ namespace :import do
   end
 
   desc "Import RINET data"
-  task :import_rinet_data, :roles => :app do
+  task :import_sis_import_data, :roles => :app do
     run "cd #{deploy_to}/#{current_dir} && " +
     "bundle exec rake RAILS_ENV=#{rails_env} app:import:rinet --trace"
   end
 
-  # 01/27/2010
-  desc "create or update a git svn clone of sparks-content"
-  task :create_or_update_sparks_content, :roles => :app do
-    run "cd #{deploy_to}/#{current_dir} && " +
-    "bundle exec rake RAILS_ENV=#{rails_env} app:import:create_or_update_sparks_content --trace"
+  desc "Restore couchdb from S3"
+  task :restore_couchdb_from_backup, :roles => :app do
+    sudo "/usr/bin/restore_couchdb.sh"
   end
-
 end
 
 #############################################################
@@ -363,12 +397,6 @@ end
 #############################################################
 
 namespace :delete do
-
-  desc "delete all the MavenJnlp resources"
-  task :maven_jnlp_resources, :roles => :app do
-    run "cd #{deploy_to}/#{current_dir} && " +
-      "bundle exec rake RAILS_ENV=#{rails_env} app:jnlp:delete_maven_jnlp_resources --trace"
-  end
 
   desc"Delete the otrunk-example models (Rails models)."
   task :otrunk_example_models, :roles => :app do
@@ -443,18 +471,6 @@ namespace :convert do
       "bundle exec rake RAILS_ENV=#{rails_env} app:convert:copy_truncated_xhtml_into_name --trace"
   end
 
-  desc "create default Project from config/settings.yml"
-  task :create_default_project_from_config_settings_yml, :roles => :app do
-    run "cd #{deploy_to}/#{current_dir} && " +
-      "bundle exec rake RAILS_ENV=#{rails_env} app:convert:create_default_project_from_config_settings_yml --trace"
-  end
-
-  desc "generate date_str attributes from version_str for MavenJnlp::VersionedJnlpUrls"
-  task :generate_date_str_for_versioned_jnlp_urls, :roles => :app do
-    run "cd #{deploy_to}/#{current_dir} && " +
-      "bundle exec rake RAILS_ENV=#{rails_env} app:convert:generate_date_str_for_versioned_jnlp_urls --trace"
-  end
-
   desc "Create bundle and console loggers for learners"
   task :create_bundle_and_console_loggers_for_learners, :roles => :app do
     run "cd #{deploy_to}/#{current_dir} && " +
@@ -508,13 +524,6 @@ namespace :convert do
       "bundle exec rake RAILS_ENV=#{rails_env} app:convert:convert_clazzes_to_multi_teacher --trace"
   end
 
-  # Wed Dec 23nd, 2009
-  desc "Delete_and_regenerate_maven_jnlp_resources"
-  task :delete_and_regenerate_maven_jnlp_resources, :roles => :app do
-    run "cd #{deploy_to}/#{current_dir} && " +
-      "ANSWER_YES=true bundle exec rake RAILS_ENV=#{rails_env} app:jnlp:delete_and_regenerate_maven_jnlp_resources --trace"
-  end
-
   # Wed Jan 6 2010
   desc "Fixup inner pages: add static_page associations (run deploy:migrate first!)"
   task :add_static_pages_to_inner_pages, :roles => :app do
@@ -549,13 +558,6 @@ namespace :convert do
       "bundle exec rake RAILS_ENV=#{rails_env} app:convert:populate_new_district_and_school_attributes_with_data_from_nces_tables --trace"
   end
 
-  # seb: 20100513
-  desc "Erase the marshalled jnlps stored in the jnlp object directory by the jnlp gem: config/jnlp_objects"
-  task :empty_jnlp_object_cache, :roles => :app do
-    run "cd #{deploy_to}/#{current_dir} && " +
-      "bundle exec rake RAILS_ENV=#{rails_env} app:jnlp:empty_jnlp_object_cache --trace"
-  end
-
   # seb: 20101019
   desc "Reset all activity position information"
   task :reset_activity_positions, :roles => :app do
@@ -565,7 +567,7 @@ namespace :convert do
 
   # seb: 20110126
   # See commit: Add "offerings_count" cache counter to runnables
-  # https://github.com/stepheneb/rigse/commit/dadea520e3cda26a721e01428527a86222143c68
+  # https://github.com/concord-consortium/rigse/commit/dadea520e3cda26a721e01428527a86222143c68
   desc "Recalculate the 'offerings_count' field for runnable objects"
   task :reset_offering_counts, :roles => :app do
     # remove investigation cache files
@@ -577,27 +579,35 @@ namespace :convert do
   desc "create an investigation to test all know probe_type / calibration combinations"
   task :create_probe_testing_investigation, :roles => :app do
     run "cd #{deploy_to}/#{current_dir} && " +
-        "rake RAILS_ENV=#{rails_env} app:setup:create_probe_testing_investigation --trace"
+        "bundle exec rake RAILS_ENV=#{rails_env} app:setup:create_probe_testing_investigation --trace"
   end
   # seb: 20110516
   # See commit: District#destroy cascades through dependents
-  # https://github.com/stepheneb/rigse/commit/1c9e26919decfe322e0bca412b4fa41928b7108a
+  # https://github.com/concord-consortium/rigse/commit/1c9e26919decfe322e0bca412b4fa41928b7108a
   desc "*** WARNING *** Delete all real districts, schools, teachers, students, offerings, etc except for the virtual site district and school"
   task :delete_all_real_schools, :roles => :app do
     run "cd #{deploy_to}/#{current_dir} && bundle exec rake RAILS_ENV=#{rails_env} app:schools:delete_all_real_schools --trace"
   end
+
+  # seb: 20110715
+  # moved repo to https://github.com/concord-consortium/rigse
+  desc "change git remote url for origin to git://github.com/concord-consortium/rigse.git"
+  task :change_git_origin_url_to_concord_consortium, :roles => :app do
+    run("cd #{shared_path}/cached-copy; git remote set-url origin git://github.com/concord-consortium/rigse.git")
+  end
+
 end
 
 #
 # generake (hehe) cap task to run rake tasks.
 # found here: http://stackoverflow.com/questions/312214/how-do-i-run-a-rake-task-from-capistrano
-namespace :rake do  
+namespace :rake_tasks do
   desc "Run a rake task: cap staging rake:invoke task=a_certain_task"
-  # run like: cap staging rake:invoke task=a_certain_task  
-  task :invoke do  
+  # run like: cap staging rake:invoke task=a_certain_task
+  task :invoke do
     run("cd #{deploy_to}/current; bundle exec rake #{ENV['task']} RAILS_ENV=#{rails_env}")
- rake #{ENV['task']} RAILS_ENV=#{rails_env}")  
-  end  
+ rake #{ENV['task']} RAILS_ENV=#{rails_env}")
+  end
 end
 
 #############################################################
@@ -617,10 +627,15 @@ namespace :installer do
     %x[cp config/installer.yml config/installer.yml.mine]
     download("#{deploy_to}/#{current_dir}/config/installer.yml", "config/installer.yml", :via => :scp)
     # build the installers
-    editor = YamlEditor.new('./config/installer.yml')
-    editor.edit
-    editor.write_file
-    %x[bundle exec rake build:installer:build_all ]
+
+    # the yaml editor is broken...
+    # editor = YamlEditor.new('./config/installer.yml')
+    # editor.edit
+    # editor.write_file
+    # so instead just give the user a chance to manual edit the installer.yml file
+    Capistrano::CLI.ui.ask("You can now edit the config/installer.yml file, press enter when done.")
+
+    %x[bundle exec rake build:installer:rebuild_all ]
 
     # post the config back up to remote server
     upload("config/installer.yml", "#{deploy_to}/#{current_dir}/config/installer.yml", :via => :scp)
@@ -635,9 +650,74 @@ namespace :installer do
 
 end
 
+namespace 'account_data' do
+  desc 'upload_csv_for_district: copy the local csv import files to remote for district (set district=whatever)'
+  task 'upload_csv_for_district' do
+    district = ENV['district']
+    if district
+      domain = ENV['domain'] || 'rinet_sakai'
+      district_root = File.join('sis_import_data','districts',domain, 'csv')
+      from_dir = File.join('sis_import_data','districts',domain, 'csv',district)
+      to_dir   = File.join(deploy_to,current_dir,'sis_import_data','districts',domain, 'csv')
+      upload(from_dir, to_dir, :via => :scp, :recursive => true)
+    end
+  end
+end
+
+# Tasks to interact with Solr and SunSpot
+namespace :solr do
+  desc "start solr"
+  task :start, :roles => :app, :except => { :no_release => true } do
+    run "cd #{current_path} && RAILS_ENV=#{rails_env} bundle exec rake sunspot:solr:start"
+  end
+  desc "stop solr"
+  task :stop, :roles => :app, :except => { :no_release => true } do
+    run "cd #{current_path} && RAILS_ENV=#{rails_env} bundle exec rake sunspot:solr:stop ;true"
+  end
+
+  desc "restart solr"
+  task :restart, :roles => :app, :except => { :no_release => true } do
+    stop
+    start
+  end
+
+  desc "stop solr, remove data, start solr, reindex all records"
+  task :hard_reindex, :roles => :app do
+    stop
+    run "rm -rf #{shared_path}/solr/data/*"
+    start
+    reindex
+  end
+
+  desc "simple reindex" #note the yes | reindex to avoid the nil.chomp error
+  task :reindex, roles: :app do
+    run "cd #{current_path} && yes | RAILS_ENV=#{rails_env} bundle exec rake sunspot:solr:reindex"
+  end
+end
+
 before 'deploy:restart', 'deploy:set_permissions'
 before 'deploy:update_code', 'deploy:make_directory_structure'
 after 'deploy:update_code', 'deploy:shared_symlinks'
-after 'deploy:symlink', 'deploy:create_asset_packages'
-after 'deploy:create_asset_packages', 'deploy:cleanup'
+# see load 'deploy/assets' in Capfile
+# after 'deploy:create_symlink', 'deploy:create_asset_packages'
+after 'deploy:shared_symlinks', 'deploy:cleanup'
 after 'installer:create', 'deploy:restart'
+
+# start the delayed_job worker
+# use a prefix incase multiple apps are deployed to the same server
+require "delayed/recipes"
+
+# need to use the &block syntax so that deploy_to is correctly setup
+set(:delayed_job_args) { "--prefix '#{deploy_to}'" }
+after "deploy:stop",    "delayed_job:stop"
+after "deploy:start",   "delayed_job:start"
+after "deploy:restart", "delayed_job:restart"
+after "deploy:restart", "solr:restart"
+
+# Make the default behavior be to NOT autoscale
+set(:autoscaling_instance_type, "c3.large")
+set :autoscaling_create_image, false
+set :autoscaling_create_group, false
+set :autoscaling_create_policy, false
+set :autoscaling_create_launch_configuration, false
+set(:autoscaling_require_keys, false)

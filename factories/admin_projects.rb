@@ -1,1 +1,0 @@
-# moved for now to the factory: maven_jnlp.rb

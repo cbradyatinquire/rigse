@@ -1,26 +1,31 @@
 --- 
 development: 
   encoding: utf8
-  adapter: mysql
+  adapter: mysql2
   username: root
   database: rites_development
-  password: *****
+  password: '*****'
   pool: 5
 
-test: &test_settings
+test:
   encoding: utf8
-  adapter: mysql
+  adapter: mysql2
   username: root
   database: rites_test
-  password: *****
+  password: '*****'
   pool: 5
 
 cucumber:
-  <<: *test_settings
+  encoding: utf8
+  adapter: mysql2
+  username: root
+  database: rites_cucumber
+  password: '*****'
+  pool: 5
 
 staging: 
   encoding: utf8
-  adapter: mysql
+  adapter: mysql2
   username: root
   database: rites_staging
   password: 
@@ -28,27 +33,8 @@ staging:
 
 production: 
   encoding: utf8
-  adapter: mysql
+  adapter: mysql2
   username: root
   database: rites_production
-  password: *****
-  pool: 5
-
-# Optionally used for importing of ITSI activities
-itsi: 
-  encoding: utf8
-  adapter: mysql
-  username: root
-  database: production_itsi_prod
-  password: *****
-  pool: 5
-  asset_url: http://itsidiy.concord.org
-
-# Optionally used with the itsi database for importing ITSI units
-ccportal:
-  encoding: utf8
-  adapter: mysql
-  username: root
-  database: ccportal
-  password: *****
+  password: '*****'
   pool: 5

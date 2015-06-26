@@ -1,0 +1,9 @@
+-if textlength>0 && suggestions && suggestions.length>0
+  #suggestions
+    - suggestions.each do |material|
+      - if submit_form == 'true'
+        %a.suggestion_link{:onclick=>'submit_suggestion(this)'}
+      .suggestion
+        = material.name
+-else
+  %div

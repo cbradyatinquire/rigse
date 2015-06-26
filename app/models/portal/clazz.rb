@@ -1,5 +1,5 @@
 class Portal::Clazz < ActiveRecord::Base
-  set_table_name :portal_clazzes
+  self.table_name = :portal_clazzes
 
   acts_as_replicatable
 
@@ -7,10 +7,12 @@ class Portal::Clazz < ActiveRecord::Base
   belongs_to :semester, :class_name => "Portal::Semester", :foreign_key => "semester_id"
   # belongs_to :teacher, :class_name => "Portal::Teacher", :foreign_key => "teacher_id"
 
-  has_many :offerings, :dependent => :destroy, :class_name => "Portal::Offering", :foreign_key => "clazz_id"
-  has_many :active_offerings, :class_name => "Portal::Offering", :foreign_key => 'clazz_id', :conditions => { :active => true }
+  has_many :offerings, :dependent => :destroy, :class_name => "Portal::Offering", :foreign_key => "clazz_id",
+    :order => :position
+  has_many :active_offerings, :class_name => "Portal::Offering", :foreign_key => 'clazz_id',
+    :conditions => { :active => true }, :order => :position
 
-  has_many :student_clazzes, :class_name => "Portal::StudentClazz", :foreign_key => "clazz_id"
+  has_many :student_clazzes, :dependent => :destroy, :class_name => "Portal::StudentClazz", :foreign_key => "clazz_id"
   has_many :students, :through => :student_clazzes, :class_name => "Portal::Student"
 
   has_many :teacher_clazzes, :dependent => :destroy, :class_name => "Portal::TeacherClazz", :foreign_key => "clazz_id"
@@ -18,10 +20,14 @@ class Portal::Clazz < ActiveRecord::Base
 
   has_many :grade_levels, :dependent => :destroy, :as => :has_grade_levels, :class_name => "Portal::GradeLevel"
   has_many :grades, :through => :grade_levels, :class_name => "Portal::Grade"
-  
+
+  has_many :bookmarks
+
   before_validation :class_word_lowercase
+  before_validation :class_word_strip
   validates_presence_of :class_word
   validates_uniqueness_of :class_word
+  validates_presence_of :name
 
   include Changeable
 
@@ -59,76 +65,9 @@ class Portal::Clazz < ActiveRecord::Base
       @@searchable_attributes
     end
 
-    def display_name
-      "Class"
-    end
-
     def has_offering
       Portal::Offering.find(:all, :select => 'distinct clazz_id', :include => :clazz).collect {|p| p.clazz}
     end
-
-    # TODO: Should this go here?
-    # We want to crate a clazz to test data saving and loading
-    #
-    def data_test_clazz
-      class_word = '__XyZZy__'
-      clazz = Portal::Clazz.find_by_class_word(class_word)
-      if clazz
-        # TODO: clean this up!
-        # Just in case the existing investigation created for testing needs
-        # to be updated -- make sure we have the right text in the xhtml
-        # because the test relies on the object having the right name and
-        # the name is generated from text in the xhtml prompt.
-        open_response = clazz.offerings[0].runnable.open_responses.first
-        open_response.prompt = "test_text"
-        open_response.save!
-      else
-        clazz = Portal::Clazz.create(
-          :name => 'Data test class',
-          :class_word => class_word
-        )
-        investigation = Investigation.create( {
-          :name => 'Data test'
-        })
-
-
-        activity = Activity.create(:name => 'Data testing Activity')
-        activity.investigation = investigation
-        activity.save
-
-        section = Section.create(:name => "data testing section")
-        section.activity = activity
-        section.save
-
-        page = Page.create(:name => 'data testing page')
-        page.section = section
-        page.save
-
-        xhtml = Embeddable::Xhtml.create(:name => 'data testing xhtml')
-        xhtml.save
-        page.xhtmls << xhtml
-
-        # The prompt gets used as the "name" for the open response, and the OTText's name gets set to #{prompt}_field
-        # The Java test looks for a text box named "test_text_field"
-        open_response = Embeddable::OpenResponse.create(:prompt => "test_text");
-        open_response.save
-        page.open_responses << open_response
-        page.save
-
-        investigation.user = User::site_admin
-        investigation.save
-
-        offering = Portal::Offering.create()
-        offering.runnable = investigation;
-        offering.clazz = clazz
-        offering.save
-        clazz.save
-        clazz.reload
-      end
-      clazz
-    end
-
-
   end
 
   def self.find_or_create_by_course_and_section_and_start_date(portal_course,section,start_date)
@@ -167,6 +106,15 @@ class Portal::Clazz < ActiveRecord::Base
   def title
     semester_name = semester ? semester.name : 'unknown'
     "Class: #{name}, Semester: #{semester_name}"
+  end
+
+  def teachers_label
+    self.teachers.size > 1 ? "Teachers" : "Teacher"
+  end
+
+  def teachers_listing
+    return "no teachers" unless self.teachers.size > 0
+    return self.teachers.collect { |t| t.name }.join(", ")
   end
 
   # for the accordion display
@@ -278,8 +226,61 @@ class Portal::Clazz < ActiveRecord::Base
   def refresh_saveable_response_objects
     self.offerings.each { |o| o.refresh_saveable_response_objects }
   end
-  
+
   def class_word_lowercase
     self.class_word.downcase! if self.class_word
   end
+
+  def class_word_strip
+    self.class_word.strip! if self.class_word
+  end
+
+  # NOTE: this should only be called by offerings_with_default_classes
+  # TODO: make protected method
+  def offerings_including_default_class
+    return self.active_offerings if self.default_class
+    offerings = self.active_offerings.clone
+    final_offers = []
+    offerings.each do |offering|
+      # TODO: ensure that the offerings are in the default class?
+      # the 'default' flag in offerings seems to be redundant, possibly confusing ...
+      default_offerings = Portal::Offering.find_all_by_runnable_id_and_runnable_type_and_default_offering(offering.runnable_id, offering.runnable_type,true)
+      case default_offerings.size
+      when 0
+        final_offers << offering
+        next
+      when 1
+        final_offers << default_offerings.first
+        next
+      end
+      final_offers <<  default_offerings.first
+      logger.warn("multiple default offerings with the same runnable ids: #{default_offerings.map {|o| o.id}} type: #{default_offerings.first.runnable_type} id: #{default_offerings.first.runnable_id}")
+    end
+    final_offers
+  end
+
+  def offerings_with_default_classes(user=nil)
+    return self.offerings_including_default_class unless (user && user.portal_student && self.default_class)
+    real_classes            = user.portal_student.clazzes.reject { |c| c.default_class }
+    real_offering_runnables = real_classes.map{ |c| c.active_offerings.map { |o| o.runnable } }.flatten.uniq.compact
+    default_offerings       = self.active_offerings.reject { |o| real_offering_runnables.include?(o.runnable) }
+    default_offerings
+  end
+
+  def update_offerings_position
+    offerings = self.offerings.sort {|a,b| a.position <=> b.position}
+    position = 1
+    offerings.each do|offering|
+      offering.position = position
+      offering.save
+      position += 1
+    end
+  end
+
+  def strip_white_space
+    self.name = self.name.strip if self.name
+    self.description = self.description.strip if self.description
+    self.class_word = self.class_word.strip if self.class_word
+  end
+
 end

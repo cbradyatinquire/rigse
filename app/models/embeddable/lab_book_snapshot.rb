@@ -1,5 +1,5 @@
 class Embeddable::LabBookSnapshot < ActiveRecord::Base
-  set_table_name "embeddable_lab_book_snapshots"
+  self.table_name = "embeddable_lab_book_snapshots"
 
   
   belongs_to :user
@@ -23,11 +23,17 @@ class Embeddable::LabBookSnapshot < ActiveRecord::Base
     end
   end
   
+  include Cloneable
+  @@cloneable_associations = [:target_element]
+
   @@searchable_attributes = %w{name description}
   
   class <<self
     def searchable_attributes
       @@searchable_attributes
+    end
+    def cloneable_associations
+      @@cloneable_associations
     end
   end
 
@@ -35,9 +41,6 @@ class Embeddable::LabBookSnapshot < ActiveRecord::Base
   default_value_for :description, "description ..."
   
 
-  def self.display_name
-    "Snapshot Button"
-  end
 
 
   def other_elements_on_page

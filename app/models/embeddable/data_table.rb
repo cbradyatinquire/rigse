@@ -1,5 +1,5 @@
 class Embeddable::DataTable < ActiveRecord::Base
-  set_table_name "embeddable_data_tables"
+  self.table_name = "embeddable_data_tables"
 
 
   
@@ -92,9 +92,6 @@ class Embeddable::DataTable < ActiveRecord::Base
     return ""
   end
 
-  def self.display_name
-    "Data Table"
-  end
 
   def investigations
     invs = []

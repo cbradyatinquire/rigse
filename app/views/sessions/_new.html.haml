@@ -1,8 +1,8 @@
 #content-upper
   .cols.login-area
     .col
-      - form_tag session_path, :id=>"project-signin" do
-        - field_set_tag "Project Sign In" do
+      = form_tag session_path, :id=>"project-signin" do
+        = field_set_tag "Project Sign In" do
           %h2
             Project Sign In
           %ul.graphic-input
@@ -15,7 +15,7 @@
             %li.remember
               = label_tag 'remember_me', 'Stay logged in', :class=>"right"
               = check_box_tag 'remember_me', '1'
-          %button.nontext.button{ :type=>'submit' }
+          %button.nontext.button{ :type=>'submit',:id=>"LogInSubmitButton" }
             'Login'
           %p.forgot= link_to 'Forgot Password', forgot_password_path
     .col2
@@ -24,5 +24,5 @@
       %strong
         IMPORTANT!
       Before running our software and activities, please view our
-      %a{ :href=>"/requirements/" }
+      %a{ :href=>requirements_path }
         Technical Notes and Requirements section

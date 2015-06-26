@@ -1,28 +1,38 @@
 class Saveable::OpenResponse < ActiveRecord::Base
-  set_table_name "saveable_open_responses"
+  self.table_name = "saveable_open_responses"
 
   belongs_to :learner,        :class_name => 'Portal::Learner'
   belongs_to :offering,        :class_name => 'Portal::Offering'
-  
+
   belongs_to :open_response,  :class_name => 'Embeddable::OpenResponse'
 
-  has_many :answers, :order => :position, :class_name => "Saveable::OpenResponseAnswer"
+  has_many :answers, :dependent => :destroy ,:order => :position, :class_name => "Saveable::OpenResponseAnswer"
 
-  # has_one :answer, 
+  # has_one :answer,
   #   :class_name => "Saveable::OpenResponseAnswer",
-  #   :order => 'position DESC' 
-  
+  #   :order => 'position DESC'
+
   [:prompt, :name].each { |m| delegate m, :to => :open_response, :class_name => 'Embeddable::OpenResponse' }
-  
+
   include Saveable::Saveable
   def answer
     if answered?
       answers.last.answer
     else
-      "not answered"
+      'not answered'
     end
   end
-  
+
+  def submitted_answer
+    if submitted?
+      answers.last.answer
+    elsif answered?
+      'not submitted'
+    else
+      'not answered'
+    end
+  end
+
   def answered?
     answers.length > 0
   end

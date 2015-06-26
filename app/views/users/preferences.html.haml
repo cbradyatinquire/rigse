@@ -1,12 +1,12 @@
 %h2
   User Preferences
-- form_for @user do |form|
+= form_for @user do |form|
   .item
     .content
       #left-col
         = form.error_messages
         = render :partial => 'form', :locals => { :f => form }
-      
+
         - if @user.portal_student
           %fieldset
             %legend Security Questions
@@ -21,4 +21,13 @@
           = submit_tag 'Save'
         %li
           = submit_tag 'Cancel'
+        %li
+          = link_to "Change Password", reset_password_user_path(@user),:class => "button"
 
+%style{:type => "text/css"}
+  :sass 
+    #flash 
+      position: absolute
+      top: 535px
+      padding-left: 22px
+      z-index: 1

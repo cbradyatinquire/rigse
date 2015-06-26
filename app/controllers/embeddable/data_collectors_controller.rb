@@ -40,20 +40,11 @@ class Embeddable::DataCollectorsController < ApplicationController
       respond_to do |format|
         format.html # show.html.erb
         format.otml { render :layout => "layouts/embeddable/data_collector" } # data_collector.otml.haml
-        format.jnlp { render :partial => 'shared/show', :locals => { :runnable => @data_collector, :teacher_mode => false }}
-        format.config { render :partial => 'shared/show', :locals => { :runnable => @data_collector, :session_id => (params[:session] || request.env["rack.session.options"][:id]), :teacher_mode => false } }
-        format.dynamic_otml { render :partial => 'shared/show', :locals => {:runnable => @data_collector, :teacher_mode => @teacher_mode} }
+        format.jnlp { render :partial => 'shared/installer', :locals => { :runnable => @data_collector }}
+        format.config { render :partial => 'shared/show', :locals => { :runnable => @data_collector, :session_id => (params[:session] || request.env["rack.session.options"][:id]) } }
+        format.dynamic_otml { render :partial => 'shared/show', :locals => {:runnable => @data_collector} }
         format.xml  { render :xml => @data_collector }
       end
-    end
-  end
-
-  # GET /Embeddable/data_collectors/1/print
-  def print
-    @data_collector = Embeddable::DataCollector.find(params[:id])
-    respond_to do |format|
-      format.html { render :layout => "layouts/embeddable/print" }
-      format.xml  { render :xml => @data_collector }
     end
   end
 
@@ -89,9 +80,6 @@ class Embeddable::DataCollectorsController < ApplicationController
       respond_to do |format|
         format.html
         format.otml { render :layout => "layouts/embeddable/data_collector" } # data_collector.otml.haml
-        format.jnlp { render :partial => 'shared/edit', :locals => { :runnable => @data_collector, :teacher_mode => false } }
-        format.config { render :partial => 'shared/edit', :locals => { :runnable => @data_collector, :session_id => (params[:session] || request.env["rack.session.options"][:id]), :teacher_mode => false } }
-        format.dynamic_otml { render :partial => 'shared/edit', :locals => {:runnable => @data_collector, :teacher_mode => false } }
         format.xml  { render :xml => @data_collector }
       end
     end
@@ -141,8 +129,8 @@ class Embeddable::DataCollectorsController < ApplicationController
     # default values for the y-axis. This assmption will not necessarily
     # be correct with a REST update to this resource.
     if request.symbolized_path_parameters[:format] == 'otml'
-      otml_root_content = (Hpricot.XML(request.raw_post)/'/otrunk/objects/OTSystem/root/*').to_s
-      otml_library_content = (Hpricot.XML(request.raw_post)/'/otrunk/objects/OTSystem/library/*').to_s
+      otml_root_content = (Nokogiri.XML(request.raw_post)/'/otrunk/objects/OTSystem/root/*').to_s
+      otml_library_content = (Nokogiri.XML(request.raw_post)/'/otrunk/objects/OTSystem/library/*').to_s
       @data_collector.update_attributes(:otml_root_content => otml_root_content, :otml_library_content => otml_library_content)
       @data_collector.update_from_otml_library_content
       render :nothing => true

@@ -1,5 +1,5 @@
 class Report::EmbeddableFilter < ActiveRecord::Base
-  set_table_name "report_embeddable_filters"
+  self.table_name = "report_embeddable_filters"
   
   belongs_to :offering, :class_name => "Portal::Offering", :foreign_key => "offering_id"
   
@@ -26,6 +26,11 @@ class Report::EmbeddableFilter < ActiveRecord::Base
     @embeddables_internal = array
   end
   
+  def clear
+    self.update_attribute(:embeddables, [])
+    @embeddables_internal = nil
+  end
+
   def reload
     @embeddables_internal = nil
     super

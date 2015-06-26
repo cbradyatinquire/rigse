@@ -1,9 +1,5 @@
 module OtmlHelper
 
-  def net_logo_package_name
-    jnlp_adaptor.net_logo_package_name
-  end
-  
   def ot_menu_display_name(object)
     if for_teacher_only?(object) 
       return "+ #{object.name}"
@@ -42,9 +38,9 @@ module OtmlHelper
     class_name = component.class.name.split('::').last.underscore
     "#{prefix}#{class_name}_#{component.id}"
   end
-  
-  def data_filter_inports
-    Probe::DataFilter.find(:all).collect { |df| df.otrunk_object_class }
+
+  def data_filter_imports
+    Probe::DataFilter.all.collect { |df| df.otrunk_object_class }
   end
   
   def imports
@@ -53,6 +49,7 @@ module OtmlHelper
       org.concord.data.state.OTDataField
       org.concord.data.state.OTDataStore
       org.concord.data.state.OTDataTable
+      org.concord.data.state.OTDigitalDisplay
       org.concord.data.state.OTTimeLimitDataProducerFilter
       org.concord.datagraph.state.OTDataAxis
       org.concord.datagraph.state.OTDataCollector
@@ -124,10 +121,10 @@ module OtmlHelper
       org.concord.otrunk.script.ui.OTScriptVariableView
       org.concord.smartgraph.OTSmartGraphTool
       org.concord.multimedia.state.OTSoundGrapherModel
-    } + data_filter_inports + (@otrunk_imports || []).uniq
-    imports <<  "org.concord.#{net_logo_package_name}.OTNLogoModel"
+      org.concord.otrunknl41.OTNLogoModel
+    } + data_filter_imports + (@otrunk_imports || []).uniq
   end
-  
+
   def ot_imports
     capture_haml do
       haml_tag :imports do
@@ -142,12 +139,12 @@ module OtmlHelper
     [
       ['text_edit_view', 'org.concord.otrunk.ui.OTText', 'org.concord.otrunk.ui.swing.OTTextEditView'],
       ['question_view', 'org.concord.otrunk.ui.question.OTQuestion', 'org.concord.otrunk.ui.question.OTQuestionView'],
-      ['choice_radio_button_view', 'org.concord.otrunk.ui.OTChoice', 'org.concord.otrunk.ui.swing.OTChoiceRadioButtonView'],
       ['data_drawing_tool2_view', 'org.concord.graph.util.state.OTDrawingTool2', 'org.concord.datagraph.state.OTDataDrawingToolView'],
       ['blob_image_view', 'org.concord.framework.otrunk.wrapper.OTBlob', 'org.concord.otrunk.ui.swing.OTBlobImageView'],
       ['data_collector_view', 'org.concord.datagraph.state.OTDataCollector', 'org.concord.datagraph.state.OTDataCollectorView'],
       ['data_graph_view', 'org.concord.datagraph.state.OTDataGraph', 'org.concord.datagraph.state.OTDataGraphView'],
       ['data_field_view', 'org.concord.data.state.OTDataField', 'org.concord.data.state.OTDataFieldView'],
+      ['digital_display_view', 'org.concord.data.state.OTDigitalDisplay', 'org.concord.data.state.OTDigitalDisplayView'],
       ['data_drawing_tool_view', 'org.concord.graph.util.state.OTDrawingTool', 'org.concord.datagraph.state.OTDataDrawingToolView'],
       ['multi_data_graph_view', 'org.concord.datagraph.state.OTMultiDataGraph', 'org.concord.datagraph.state.OTMultiDataGraphView'],
       ['button_view', 'org.concord.otrunk.control.OTButton', 'org.concord.otrunk.control.OTButtonView'],
@@ -163,7 +160,7 @@ module OtmlHelper
       ['tab_container_view','org.concord.otrunk.ui.OTTabContainer', 'org.concord.otrunk.ui.swing.OTTabContainerView'],
       ['nav_bar', 'org.concord.otrunk.ui.menu.OTNavBar', 'org.concord.otrunk.ui.menu.OTNavBarView'],
       ['modeler_page_view', 'org.concord.otrunkmw.OTModelerPage', 'org.concord.otrunkmw.OTModelerPageView'],
-      ['n_logo_model', "org.concord.#{net_logo_package_name}.OTNLogoModel", "org.concord.#{net_logo_package_name}.OTNLogoModelView"],
+      ['n_logo_model', "org.concord.otrunknl41.OTNLogoModel", "org.concord.otrunknl41.OTNLogoModelView"],
       ['biologica_world', 'org.concord.otrunk.biologica.OTWorld', 'org.concord.otrunk.ui.swing.OTNullView'],
       ['biologica_organism', 'org.concord.otrunk.biologica.OTOrganism', 'org.concord.otrunk.ui.swing.OTNullView'],
       ['biologica_static_organism', 'org.concord.otrunk.biologica.OTStaticOrganism', 'org.concord.otrunk.biologica.ui.OTStaticOrganismView'],
@@ -188,7 +185,7 @@ module OtmlHelper
     [
       ['text_edit_edit_view', 'org.concord.otrunk.ui.OTText', 'org.concord.otrunk.ui.swing.OTTextEditEditView'],
       ['question_edit_view', 'org.concord.otrunk.ui.question.OTQuestion', 'org.concord.otrunk.ui.question.OTQuestionEditView'],
-      ['choice_radio_button_edit_view', 'org.concord.otrunk.ui.OTChoice', 'org.concord.otrunk.ui.swing.OTChoiceComboBoxEditView'],
+#      ['choice_radio_button_edit_view', 'org.concord.otrunk.ui.OTChoice', 'org.concord.otrunk.ui.swing.OTChoiceComboBoxEditView'],
       ['lab_book_button_view', 'org.concord.otrunk.labbook.OTLabbookButton', 'org.concord.otrunk.labbook.ui.OTLabbookButtonEditView'],
 #      ['data_drawing_tool2_view', 'org.concord.graph.util.state.OTDrawingTool2', 'org.concord.datagraph.state.OTDataDrawingToolView'],
 #      ['blob_image_view', 'org.concord.framework.otrunk.wrapper.OTBlob', 'org.concord.otrunk.ui.swing.OTBlobImageView'],
@@ -209,7 +206,7 @@ module OtmlHelper
 #      ['card_container_view', 'org.concord.otrunk.ui.OTCardContainer', 'org.concord.otrunk.ui.swing.OTCardContainerView'],
 #      ['nav_bar', 'org.concord.otrunk.ui.menu.OTNavBar', 'org.concord.otrunk.ui.menu.OTNavBarView'],
       ['modeler_page_edit_view', 'org.concord.otrunkmw.OTModelerPage', 'org.concord.otrunkmw.OTModelerPageEditView'],
-      ['n_logo_model_edit_view', "org.concord.#{net_logo_package_name}.OTNLogoModel", "org.concord.#{net_logo_package_name}.OTNLogoModelEditView"],
+      ['n_logo_model_edit_view', "org.concord.otrunknl41.OTNLogoModel", "org.concord.otrunknl41.OTNLogoModelEditView"],
       ['biologica_world', 'org.concord.otrunk.biologica.OTWorld', 'org.concord.otrunk.biologica.OTWorldEditView'],
       ['biologica_organism', 'org.concord.otrunk.biologica.OTOrganism', 'org.concord.otrunk.biologica.OTOrganismEditView'],
       ['biologica_static_organism', 'org.concord.otrunk.biologica.OTStaticOrganism', 'org.concord.otrunk.biologica.ui.OTStaticOrganismEditView'],
@@ -260,9 +257,7 @@ module OtmlHelper
   end
 
   def ot_interface_manager(use_current_user = false)
-    old_format = @template_format
-    @template_format = :otml
-    # Now that we're using the HttpCookieService, current_user.vendor_interface 
+    # Now that we're using the HttpCookieService, current_visitor.vendor_interface 
     # should be correct, even when requesting from the java client
     vendor_interface = nil
     # allow switching between using the current user and not. This way 
@@ -270,12 +265,24 @@ module OtmlHelper
     # otml can use the current user's device.
     # debugger
     if use_current_user
-      vendor_interface = current_user.vendor_interface
+      vendor_interface = current_visitor.vendor_interface
     else
       vendor_interface = Probe::VendorInterface.find_by_short_name("vernier_goio")
     end
-    result = render :partial => "otml/ot_interface_manager", :locals => { :vendor_interface => vendor_interface }
-    @template_format = old_format
+
+    if vendor_interface
+      # note the formats option, this makes this work even when the current 'format' is dynamic_otml
+      result = render :partial => "otml/ot_interface_manager", :formats => [:otml], :locals => { :vendor_interface => vendor_interface }
+      return result
+    else
+      # in a portal that doesn't have the sensor configurations setup correctly, the vendor interface can
+      # be nil. Instead of failing we just skip the ot_interface_manager section all together
+      return ""
+    end
+  end
+
+  def ot_navigation_history_service
+    result = render :partial => "otml/ot_navigation_history_service", :formats => [:otml]
     return result
   end
 
@@ -285,31 +292,15 @@ module OtmlHelper
         haml_concat ot_view_bundle(options)
         haml_concat ot_interface_manager
         haml_concat ot_script_engine_bundle
-        use_bitmap = Admin::Project.default_project.use_bitmap_snapshots? ? 'false' : 'true'
-        haml_tag :OTLabbookBundle, {:local_id => 'lab_book_bundle', :scaleDrawTools => use_bitmap }
-      end
-    end
-  end
-
-  def ot_sensor_data_proxy(data_collector)
-    probe_type = data_collector.probe_type
-    capture_haml do
-      haml_tag :OTSensorDataProxy, :local_id => ot_local_id_for(data_collector, :data_proxy) do
-        haml_tag :request do
-           haml_tag :OTExperimentRequest, :period => probe_type.period.to_s do
-             haml_tag :sensorRequests do
-               haml_tag :OTSensorRequest, :stepSize => probe_type.step_size.to_s, 
-                :type => probe_type.ptype.to_s, :unit => probe_type.unit, :port => probe_type.port.to_s, 
-                :requiredMax => probe_type.max.to_s, :requiredMin => probe_type.min.to_s,
-                :displayPrecision => "#{data_collector.probe_type.display_precision}"
-            end
-          end
-        end
-        if data_collector.show_tare
-          haml_tag :zeroSensor do
-            haml_tag :OTZeroSensor, :sensorIndex => '0', :local_id=> ot_local_id_for(data_collector, :zero_action)
-          end
-        end
+        use_bitmap = Admin::Settings.default_settings.use_bitmap_snapshots? ? 'false' : 'true'
+        button_label = "Save and Close"
+        haml_tag(
+          :OTLabbookBundle, {
+            :local_id         => 'lab_book_bundle',
+            :scaleDrawTools   => use_bitmap,
+            :closeButtonLabel => button_label
+          }
+        )
       end
     end
   end
@@ -344,58 +335,28 @@ module OtmlHelper
     end
   end
   
-  def otml_for_time_limit_filter(limit, seconds)
+  def otml_time_limit_seconds(seconds)
     if seconds
-      ms = (seconds * 1000).to_i
+      (seconds * 1000).to_i
     else
-      ms = 0
+      0
     end 
-    capture_haml do
-      if limit
-        haml_tag :OTTimeLimitDataProducerFilter, :sourceChannel => "1", :timeLimit => ms do
-          haml_tag :source do
-            if block_given? 
-              yield
-            end
-          end
-        end
-      else
-        if block_given? 
-          yield
-        end
-      end
+  end
+    
+  def otml_css_path(name="otml")
+    theme = APP_CONFIG[:theme]
+    if theme  
+      theme_stylesheet_path(name)
+    else
+      stylesheet_path(name)
     end
   end
 
-  def otml_for_calibration_filter(calibration)
-    if filter = calibration.data_filter
-      capture_haml do
-        ot_name = filter.otrunk_object_class.split(".")[-1]
-        haml_tag ot_name.to_sym, :sourceChannel => "1" do
-          haml_tag :source do
-            if block_given? 
-              yield
-            end
-          end
-        end
-      end
-    end
+  def otml_settings_css_path
+    # this is a weird hard-wired route
+    # its here because I think its only used for the 
+    # match '/stylesheets/settings.css' => 'home#settings_css', :as => :settings_css
+    "/stylesheets/settings.css"
   end
-  
-  def preview_warning
-    APP_CONFIG[:otml_preview_message] || "Your data will not be saved"
-  end
-  
-  def otml_css_path(base="stylesheets",name="otml")
-    theme = APP_CONFIG[:theme]
-    file = "#{name}.css"
-    default_path = File.join(base,file)
-    if theme
-      themed_path = File.join(base,'themes', theme, file)
-      if File.exists? File.join(RAILS_ROOT,'public',themed_path)
-        return "/#{themed_path}"
-      end
-    end
-    return "/#{default_path}"
-  end
+
 end

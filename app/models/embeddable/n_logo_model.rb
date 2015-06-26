@@ -1,5 +1,5 @@
 class Embeddable::NLogoModel < ActiveRecord::Base
-  set_table_name "embeddable_n_logo_models"
+  self.table_name = "embeddable_n_logo_models"
 
   
   belongs_to :user
@@ -26,9 +26,6 @@ class Embeddable::NLogoModel < ActiveRecord::Base
 
   send_update_events_to :investigations
 
-  def self.display_name
-    "Net Logo Model"
-  end
 
   def investigations
     invs = []

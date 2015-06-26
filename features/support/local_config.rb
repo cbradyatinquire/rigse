@@ -13,6 +13,7 @@
 # the sauce_connect command would look like:
 # sauce_connect -u [sauce-user] -k [sauce-key] -s 33.33.33.10 -p 3001 -d example.com
 
+require 'capybara'
 require 'selenium-webdriver'
 
 class CapybaraConfig
@@ -40,9 +41,14 @@ class Capybara::Server
   def host
     CapybaraConfig.server_host || "127.0.0.1"
   end
-end  
+end
 
 settings_file = File.expand_path("~/.capybara.rb")
 if File.exists?(settings_file)
   CapybaraConfig.new.instance_eval(IO.read(settings_file), settings_file)
 end
+
+include SolrSpecHelper
+solr_setup
+clean_solar_index
+reindex_all

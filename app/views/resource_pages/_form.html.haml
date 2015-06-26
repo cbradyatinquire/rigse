@@ -1,4 +1,4 @@
-- form_for @resource_page, :html => { :multipart => true } do |f|
+= form_for @resource_page, :html => { :multipart => true } do |f|
 	= error_messages_for :resource_page
 	%p
 		= f.label :name
@@ -19,6 +19,10 @@
 		= f.label :publication_status
 		%br/
 		= f.select :publication_status, ResourcePage.publication_states.map {|s| s.to_s}
+
+	= render :partial => 'shared/cohorts_edit', :locals => { :object => @resource_page }
+	= render :partial => 'shared/grade_levels_edit', :locals => { :object => @resource_page }
+	= render :partial => 'shared/subject_areas_edit', :locals => { :object => @resource_page }
 
 	%h2 Attachments
 	#attachments

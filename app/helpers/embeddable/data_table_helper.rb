@@ -27,12 +27,13 @@ module Embeddable::DataTableHelper
   # Probably would be good to extract this to a haml partial
   #
   def data_table_heading_tag(heading = "new column")
-    <<-EOF_HTML
+    result = <<-EOF_HTML
     <div class="deletable_field_container">
       <input type="text" size="16" name="heading" class="data_table_js_field_target" value="#{heading}" />
       #{function_link_button('delete.png',"$(this).up().remove();")}
     </div>
     EOF_HTML
+    result.html_safe
   end
   
   #
@@ -88,7 +89,7 @@ module Embeddable::DataTableHelper
   def watch_data_fields(data_table)
     observe_form(form_id(data_table), 
       :before => pack_cells(data_table),
-      :url => { :controller => :data_tables, :action => :update_cell_data, :id => data_table.id}, 
+      :url => { :controller => "embeddable/data_tables", :action => :update_cell_data, :id => data_table.id}, 
       :with => "'data=' + $('#{data_id(data_table)}').value")
   end
 end

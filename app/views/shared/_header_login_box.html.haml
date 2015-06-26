@@ -1,0 +1,25 @@
+.header-login-box
+  %div
+    = form_for( @user, :as => 'user', :url => user_session_path, :html => {:id=>"header-project-signin"} )  do |f|
+      %table{:cellpadding=>"0", :cellspacing=>"0", :border=>"0"}
+        %tbody
+          %tr.first-row
+            %td
+              = f.label :login, "Username",:for=>"header_login"
+            %td.login-box
+              = f.text_field :login,:id=>'header_login'
+          %tr.second-row
+            %td
+              = f.label :password, "Password", :for=>"header_password"
+            %td.password-box
+              = f.password_field :password,:id=>'header_password',:class=>'text'
+          %tr.third-row
+            %td{colspan: "2"}
+              %span.segmented
+                =link_to "Can't log in?",forgot_password_path, :id=>"link_forgot_password"
+              - unless defined? @hide_signup_link
+                %span.segmented
+                  =link_to 'Sign Up', home_path
+              %span.segmented.last
+                = f.submit "Log In", :id=>"LoginSubmitButtonHeader"
+      .clear_both

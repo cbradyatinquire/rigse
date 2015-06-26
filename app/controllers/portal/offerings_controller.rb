@@ -1,7 +1,11 @@
 class Portal::OfferingsController < ApplicationController
 
   include RestrictedPortalController
-  before_filter :teacher_admin_or_config, :only => [:report, :open_response_report, :multiple_choice_report, :separated_report, :report_embeddable_filter]
+  include Portal::LearnerJnlpRenderer
+
+  before_filter :teacher_admin_or_config, :only => [:report, :open_response_report, :multiple_choice_report, :separated_report, :report_embeddable_filter,:activity_report]
+  before_filter :student_teacher_admin_or_config, :only => [:answers]
+  before_filter :student_teacher_or_admin, :only => [:show]
 
   def current_clazz
     Portal::Offering.find(params[:id]).clazz
@@ -29,6 +33,10 @@ class Portal::OfferingsController < ApplicationController
       format.html # show.html.erb
       format.xml  { render :xml => @offering }
 
+      format.run_html   {
+        @learner = setup_portal_student
+        render :show, :layout => "layouts/run"
+      }
       format.run_sparks_html   {
         if learner = setup_portal_student
           session[:put_path] = saveable_sparks_measuring_resistance_url(:format => :json)
@@ -38,11 +46,11 @@ class Portal::OfferingsController < ApplicationController
         render 'pages/show', :layout => "layouts/run"
       }
 
-      format.run_external_html   {
+      format.run_resource_html   {
          if learner = setup_portal_student
            cookies[:save_path] = @offering.runnable.save_path
            cookies[:learner_id] = learner.id
-           cookies[:student_name] = "#{current_user.first_name} #{current_user.last_name}"
+           cookies[:student_name] = "#{current_visitor.first_name} #{current_visitor.last_name}"
            cookies[:activity_name] = @offering.runnable.name
            cookies[:class_id] = learner.offering.clazz.id
            cookies[:student_id] = learner.student.id
@@ -51,28 +59,29 @@ class Portal::OfferingsController < ApplicationController
          else
            # session[:put_path] = nil
          end
-         redirect_to(@offering.runnable.url)
+         external_activity = @offering.runnable
+         if external_activity.launch_url
+           uri = URI.parse(external_activity.launch_url)
+           uri.query = {
+             :domain => root_url,
+             :externalId => learner.id,
+             :returnUrl => external_activity_return_url(learner.id),
+             :logging => @offering.clazz.logging || @offering.runnable.logging,
+             :domain_uid => current_visitor.id
+           }.to_query
+           redirect_to(uri.to_s)
+         else
+           redirect_to(@offering.runnable.url(learner))
+         end
        }
 
       format.jnlp {
         # check if the user is a student in this offering's class
         if learner = setup_portal_student
-          if params.delete(:use_installer)
-            wrapped_jnlp_url = polymorphic_url(@offering, :format => :jnlp, :params => params)
-            render :partial => 'shared/learn_installer', :locals =>
-              { :runnable => @offering.runnable, :learner => learner, :wrapped_jnlp_url => wrapped_jnlp_url }
-          else
-            render :partial => 'shared/learn', :locals => { :runnable => @offering.runnable, :learner => learner }
-          end
+          render_learner_jnlp learner
         else
-          # The current_user is a teacher (or another user acting like a teacher)
-          if params.delete(:use_installer)
-            wrapped_jnlp_url = polymorphic_url(@offering, :format => :jnlp, :params => params, :teacher_mode => true )
-            render :partial => 'shared/show_installer', :locals =>
-              { :runnable => @offering.runnable, :wrapped_jnlp_url => wrapped_jnlp_url, :teacher_mode => true }
-          else
-            render :partial => 'shared/show', :locals => { :runnable => @offering.runnable, :teacher_mode => true }
-          end
+          # The current_visitor is a teacher (or another user acting like a teacher)
+          render :partial => 'shared/installer', :locals => { :runnable => @offering.runnable, :teacher_mode => true }
         end
       }
     end
@@ -154,14 +163,48 @@ class Portal::OfferingsController < ApplicationController
 
   def report
     @offering = Portal::Offering.find(params[:id])
-    reportUtil = Report::Util.reload(@offering)  # force a reload of this offering
-    @learners = reportUtil.learners
-
-    @page_elements = reportUtil.page_elements
+    @activity_report_id = nil
+    @report_embeddable_filter = []
+    unless @offering.report_embeddable_filter.nil? || @offering.report_embeddable_filter.embeddables.nil?
+      @report_embeddable_filter = @offering.report_embeddable_filter.embeddables
+    end
+    unless params[:activity_id].nil?
+      activity = ::Activity.find(params[:activity_id].to_i)
+      @activity_report_id = params[:activity_id].to_i
+      unless activity.nil?
+        activity_embeddables = activity.page_elements.map{|pe|pe.embeddable}
+        if @offering.report_embeddable_filter.ignore
+          @offering.report_embeddable_filter.embeddables = activity_embeddables
+        else
+           filtered_embeddables = @offering.report_embeddable_filter.embeddables & activity_embeddables
+           filtered_embeddables = (filtered_embeddables.length == 0)? activity_embeddables : filtered_embeddables
+           @offering.report_embeddable_filter.embeddables = filtered_embeddables
+        end
+        @offering.report_embeddable_filter.ignore = false
+      end
+    end
 
     respond_to do |format|
-      format.html { render :layout => 'report' }# report.html.haml
+      format.html {
+        reportUtil = Report::Util.reload(@offering)  # force a reload of this offering
+        @learners = reportUtil.learners
+        @page_elements = reportUtil.page_elements
+
+        render :layout => 'report' # report.html.haml
+      }
+
+      format.run_resource_html   {
+        @learners = @offering.clazz.students.map do |l|
+          "name: '#{l.name}', id: #{l.id}"
+        end
+        cookies[:activity_name] = @offering.runnable.url
+        cookies[:class] = @offering.clazz.id
+        cookies[:class_students] = "[{" + @learners.join("},{") + "}]" # formatted for JSON parsing
+
+        redirect_to(@offering.runnable.report_url, 'popup' => true)
+       }
     end
+
 
   end
 
@@ -198,105 +241,163 @@ class Portal::OfferingsController < ApplicationController
   def report_embeddable_filter
     @offering = Portal::Offering.find(params[:id])
     @report_embeddable_filter = @offering.report_embeddable_filter
-
+    @filtered = true
+    activity_report_id = params[:activity_id]
     if params[:commit] == "Show all"
       @report_embeddable_filter.ignore = true
     else
       @report_embeddable_filter.ignore = false
     end
+    if params[:filter]
+      embeddables = params[:filter].collect{|type, ids|
+        logger.info "processing #{type}: #{ids.inspect}"
+        klass = type.constantize
+        ids.collect{|id|
+          klass.find(id.to_i)
+        }
+      }.flatten.compact.uniq
+    else
+      embeddables = []
+    end
 
-    embeddables = params[:filter].collect{|type, ids|
-      logger.info "processing #{type}: #{ids.inspect}"
-      klass = type.constantize
-      ids.collect{|id|
-        klass.find(id.to_i)
-      }
-    }.flatten.compact.uniq
-    @report_embeddable_filter.embeddables = embeddables
+    if activity_report_id
+      activity = ::Activity.find(activity_report_id.to_i)
+      activity_embeddables = activity.page_elements.map{|pe|pe.embeddable}
+      @report_embeddable_filter.embeddables = (@report_embeddable_filter.embeddables - activity_embeddables) | embeddables
+    else
+      @report_embeddable_filter.embeddables = embeddables
+    end
 
-    redirect_url = report_portal_offering_url(@offering)
     respond_to do |format|
       if @report_embeddable_filter.save
-        flash[:notice] = 'Report filter was successfully updated.'
-        format.html { redirect_to :back }
-        format.xml  { head :ok }
+          flash[:notice] = 'Report filter was successfully updated.'
+          format.html { redirect_to :back }
+          format.xml  { head :ok }
       else
         format.html { redirect_to :back }
         format.xml  { render :xml => @report_embeddable_filter.errors, :status => :unprocessable_entity }
       end
+
     end
   end
 
-  # GET /portal/offerings/data_test(.format)
-  def data_test
-    clazz = Portal::Clazz::data_test_clazz
-    @offering = clazz.offerings.first
-    @user = current_user
-    @student = @user.portal_student
-    unless @student
-      @student=Portal::Student.create(:user => @user)
-    end
-    @learner = @offering.find_or_create_learner(@student)
-    respond_to do |format|
-      format.html # views/portal/offerings/test.html.haml
-      format.jnlp {
-        render :partial => 'shared/learn', :locals => { :runnable => @offering.runnable, :learner => @learner, :data_test => true }
-      }
+  # report shown to students
+  def student_report
+    @offering = Portal::Offering.find(params[:id])
+    @learner = @offering.learners.find_by_student_id(current_visitor.portal_student)
+    if (@learner && @offering)
+      reportUtil = Report::Util.reload_without_filters(@offering)  # force a reload of this offering without filters
+      @learners = reportUtil.learners
+      @page_elements = reportUtil.page_elements
+      render :layout => false # student_report.html.haml
+      # will render student_report.html.haml
+    else
+      render :nothing => true
     end
   end
 
   def setup_portal_student
     learner = nil
-    if portal_student = current_user.portal_student
+    if portal_student = current_visitor.portal_student
       # create a learner for the user if one doesnt' exist
       learner = @offering.find_or_create_learner(portal_student)
     end
     learner
   end
 
-  def learners
-    @offering = Portal::Offering.find(params[:id])
-    @clazz = @offering.clazz
-    @learners = @clazz.students.map do |l|
-      {:name => l.name, :id => l.id, :have_confirmation => false}
-    end
-    respond_to do |format|
-      format.html # show.html.erb
-      format.xml  { render :xml => @learners }
-      format.json { render :json => @learners}
-    end  
-  end
-
-  def check_learner_auth
-    learner_id = params[:learner_id]
-    password = params[:pw]
-      begin
-        student = Portal::Student.find(learner_id)
-        user = student.user
-        user = User.authenticate(user.login,password)
-        if user
-          render :status => 200, :text => 'ok'
-          return
-        end
-      rescue
-      end
-      render :status => 400, :text => 'could not authenticate'
-  end
-
-  # setup a collaboration for a workgroup on this offering
-  def start
+  def answers
     @offering = Portal::Offering.find(params[:id])
     if @offering
       learner = setup_portal_student
-      bundle_logger = learner.bundle_logger
-      bundle_logger.start_bundle
-      students = params[:students] || ''
-      students = students.split(',').map { |s| Portal::Student.find(s) }
-      bundle_logger.in_progress_bundle.collaborators = students.compact.uniq
-      bundle_logger.in_progress_bundle.save
-      render :status => 200, :text => "ok"
+      if learner && params[:questions]
+        # create saveables
+        params[:questions].each do |dom_id, value|
+          # translate the dom id into an actual Embeddable
+          embeddable = parse_embeddable(dom_id)
+          # create saveable
+          create_saveable(embeddable, @offering, learner, value) if embeddable
+        end
+        learner.report_learner.last_run = DateTime.now
+        learner.report_learner.update_fields
+      end
+      flash[:notice] = "Your answers have been saved."
+      redirect_to :home
     else
-      render :status => 500, :text => "problem loading offering"
+      render :text => 'problem loading offering', :status => 500
     end
   end
+
+  def offering_collapsed_status
+    if current_visitor.portal_teacher.nil?
+      render :nothing=>true
+      return
+    end
+    offering_collapsed = true
+    teacher_id = current_visitor.portal_teacher.id
+    portal_teacher_full_status = Portal::TeacherFullStatus.find_or_create_by_offering_id_and_teacher_id(params[:id],teacher_id)
+
+    offering_collapsed = (portal_teacher_full_status.offering_collapsed.nil?)? false : !portal_teacher_full_status.offering_collapsed
+
+    portal_teacher_full_status.offering_collapsed = offering_collapsed
+    portal_teacher_full_status.save!
+
+    render :nothing=>true
+
+  end
+
+  def get_recent_student_report
+    offering = Portal::Offering.find(params[:id])
+    students = offering.clazz.students
+    if !students.nil? && students.length > 0
+      students = students.sort{|a,b| a.user.full_name.downcase<=>b.user.full_name.downcase}
+    end
+    learners = offering.learners
+    progress_report = ""
+    div_id = "DivHideShowDetail"+ offering.id.to_s
+    render :update do |page|
+      page.replace_html(div_id, :partial => "home/recent_student_report", :locals => { :offering => offering, :students=>students, :learners=>learners})
+      page << "setRecentActivityTableHeaders(null,#{params[:id]})"
+    end
+    return
+  end
+
+  private
+
+  def parse_embeddable(dom_id)
+    # make sure to support at least Embeddable::OpenResponse, Embeddable::MultipleChoice, and Embeddable::MultipleChoiceChoice
+    if dom_id =~ /embeddable__([^\d]+)_(\d+)$/
+      klass = "Embeddable::#{$1.classify}".constantize
+      return klass.find($2.to_i) if klass
+    end
+    nil
+  end
+
+  def create_saveable(embeddable, offering, learner, answer)
+    case embeddable
+    when Embeddable::OpenResponse
+      saveable_open_response = Saveable::OpenResponse.find_or_create_by_learner_id_and_offering_id_and_open_response_id(learner.id, offering.id, embeddable.id)
+      if saveable_open_response.response_count == 0 || saveable_open_response.answers.last.answer != answer
+        saveable_open_response.answers.create(:bundle_content_id => nil, :answer => answer)
+      end
+    when Embeddable::MultipleChoice
+      choice = parse_embeddable(answer)
+      answer = choice ? choice.choice : ""
+      if embeddable && choice
+        saveable = Saveable::MultipleChoice.find_or_create_by_learner_id_and_offering_id_and_multiple_choice_id(learner.id, offering.id, embeddable.id)
+        if saveable.answers.empty? || saveable.answers.last.answer.first[:answer] != answer
+          saveable_answer = saveable.answers.create(:bundle_content_id => nil)
+          Saveable::MultipleChoiceRationaleChoice.create(:choice_id => choice.id, :answer_id => saveable_answer.id)
+        end
+      else
+        if ! choice
+          logger.error("Missing Embeddable::MultipleChoiceChoice id: #{choice_id}")
+        elsif ! embeddable
+          logger.error("Missing Embeddable::MultipleChoice id: #{choice.multiple_choice_id}")
+        end
+      end
+    else
+      nil
+    end
+  end
+
 end

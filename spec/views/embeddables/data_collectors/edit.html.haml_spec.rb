@@ -6,15 +6,9 @@ describe "/embeddable/data_collectors/edit.html.haml" do
   before(:each) do
     # cut off the edit_menu_for helper which traverses lots of other code
     power_user = stub_model(User, :has_role? => true)
-    template.stub!(:edit_menu_for).and_return("edit menu")
-    template.stub!(:current_user).and_return(power_user)
-    assigns[:scope] = mock(
-      :id => 1, 
-      :activity => mock(
-        :data_collectors => [],
-        :data_tables => []
-    ))
-    assigns[:data_collector] = @data_collector = stub_model(Embeddable::DataCollector,
+    view.stub!(:edit_menu_for).and_return("edit menu")
+    view.stub!(:current_visitor).and_return(power_user)
+    assign(:data_collector, @data_collector = stub_model(Embeddable::DataCollector,
       :new_record? => false, 
       :id => 1, 
       :name => "Data Collector",
@@ -46,17 +40,26 @@ describe "/embeddable/data_collectors/edit.html.haml" do
       :probe_type_id =>1, 
       :multiple_graphable_enabled =>false, 
       :calibration_id =>nil,
-      :user => power_user)
+      :dd_font_size => Embeddable::DataCollector.dd_font_sizes[:small],
+      :user => power_user))
+      @scope =  @data_collector
   end
 
   it "renders the edit form" do
     render
-    response.should have_tag("form[action=#{embeddable_data_collector_path(@data_collector)}][method=post]") do
-    end
+    rendered.should have_selector("form[action='#{embeddable_data_collector_path(@data_collector)}'][method='post']")
   end
 
   it "should have a way to select a linked data collector" do
     render
-    response.should have_tag("select[name='embeddable_data_collector[data_table_id]']")
+    rendered.should have_selector("select[name='embeddable_data_collector[data_table_id]']")
+  end
+  it "should have a way to select the font size for the digital display" do
+    render
+    assert_select("select[name='embeddable_data_collector[dd_font_size]']") do
+      assert_select("option[value='#{Embeddable::DataCollector.dd_font_sizes[:small]}']")
+      assert_select("option[value='#{Embeddable::DataCollector.dd_font_sizes[:medium]}']")
+      assert_select("option[value='#{Embeddable::DataCollector.dd_font_sizes[:large]}']")
+    end
   end
 end

@@ -2,14 +2,14 @@ require File.expand_path('../../spec_helper', __FILE__)
 
 # matchers for acts_as_list
 
-Spec::Matchers.define :be_before do |expected|
+RSpec::Matchers.define :be_before do |expected|
   match                          { |given| given.position < expected.position }
   failure_message_for_should     { |given| "expected #{given.inspect} to be before #{expected.inspect}" }
   failure_message_for_should_not { |given| "expected #{given.inspect} not to be before #{expected.inspect}" }
   description                    { "be before #{expected.position}" }
 end
 
-Spec::Matchers.define :be_after do |expected|
+RSpec::Matchers.define :be_after do |expected|
   match                          { |given| given.position > expected.position }
   failure_message_for_should     { |given| "expected #{given.inspect} to be after #{expected.inspect}" }
   failure_message_for_should_not { |given| "expected #{given.inspect} not to be after #{expected.inspect}" }
@@ -28,6 +28,14 @@ describe Investigation do
     Investigation.create!(@valid_attributes)
   end
   
+  it 'has_many for all BASE_EMBEDDABLES' do
+    BASE_EMBEDDABLES.length.should be > 0
+    @investigation = Investigation.create!(@valid_attributes)
+    BASE_EMBEDDABLES.each do |e|
+      @investigation.respond_to?(e[/::(\w+)$/, 1].underscore.pluralize).should be(true)
+    end
+  end
+
   describe "should be publishable" do
     before(:each) do
       @investigation = Investigation.create!(@valid_attributes)
@@ -91,68 +99,98 @@ describe Investigation do
       APP_CONFIG[:use_gse] = @enable_gses
     end
 
-    before(:each) do
-      @bio = Factory.create( :rigse_domain,            { :name => "biology" } )
-      bio_ks = Factory.create( :rigse_knowledge_statement, { :domain => @bio     } )
-      bio_at = Factory.create( :rigse_assessment_target,       { :knowledge_statement => bio_ks })
-      
-      @physics = Factory.create( :rigse_domain,            { :name => "physics"  } )
-      physics_ks = Factory.create( :rigse_knowledge_statement, { :domain => @physics  } )
-      physics_at = Factory.create( :rigse_assessment_target,       { :knowledge_statement => physics_ks })
-      
-      @seven = "7"
-      @eight = "8"
-
-      physics7  = Factory.create( :rigse_grade_span_expectation, {:assessment_target => physics_at, :grade_span => @seven} )
-      physics8  = Factory.create( :rigse_grade_span_expectation, {:assessment_target => physics_at, :grade_span => @eight} )
-
-      bio7      = Factory.create( :rigse_grade_span_expectation, {:assessment_target => bio_at, :grade_span => @seven} )
-      bio8      = Factory.create( :rigse_grade_span_expectation, {:assessment_target => bio_at, :grade_span => @eight} )
-
-      invs = [
-        {
-          :name                   => "grade 7 physics",
-          :grade_span_expectation => physics7
-        },
-        {
-          :name                   => "grade 8 physics",
-          :grade_span_expectation => physics8
-        },
-        {
-          :name                   => "grade 7 bio",
-          :grade_span_expectation => bio7
-        },
-        {
-          :name                   => "grade 8 bio",
-          :grade_span_expectation => bio8
-        },
-      ]
-      @published = []
-      @drafts = []
-      invs.each do |inv|
-        published = Factory.create(:investigation, inv)
-        published.name << " (published) "
-        published.publish!
-        published.save
-        @published << published.reload
-        draft = Factory.create(:investigation, inv)
-        draft.name << " (draft) "
-        draft.save
-        @drafts << draft.reload
-      end
-      @public_non_gse = Factory.create(:investigation, :name => "published non-gse investigation");
-      @public_non_gse.publish!
-      @public_non_gse.save
-      @public_non_gse.reload
-      @draft_non_gse  = Factory.create(:investigation, :name => "draft non-gse investigation"); 
-    end
+    # before(:each) do
+    #   @bio = Factory.create( :rigse_domain,            { :name => "biology" } )
+    #   bio_ks = Factory.create( :rigse_knowledge_statement, { :domain => @bio     } )
+    #   bio_at = Factory.create( :rigse_assessment_target,       { :knowledge_statement => bio_ks })
+    #   
+    #   @physics = Factory.create( :rigse_domain,            { :name => "physics"  } )
+    #   physics_ks = Factory.create( :rigse_knowledge_statement, { :domain => @physics  } )
+    #   physics_at = Factory.create( :rigse_assessment_target,       { :knowledge_statement => physics_ks })
+    #   
+    #   @seven = "7"
+    #   @eight = "8"
+    # 
+    #   physics7  = Factory.create( :rigse_grade_span_expectation, {:assessment_target => physics_at, :grade_span => @seven} )
+    #   physics8  = Factory.create( :rigse_grade_span_expectation, {:assessment_target => physics_at, :grade_span => @eight} )
+    # 
+    #   bio7      = Factory.create( :rigse_grade_span_expectation, {:assessment_target => bio_at, :grade_span => @seven} )
+    #   bio8      = Factory.create( :rigse_grade_span_expectation, {:assessment_target => bio_at, :grade_span => @eight} )
+    # 
+    #   invs = [
+    #     {
+    #       :name                   => "grade 7 physics",
+    #       :grade_span_expectation => physics7
+    #     },
+    #     {
+    #       :name                   => "grade 8 physics",
+    #       :grade_span_expectation => physics8
+    #     },
+    #     {
+    #       :name                   => "grade 7 bio",
+    #       :grade_span_expectation => bio7
+    #     },
+    #     {
+    #       :name                   => "grade 8 bio",
+    #       :grade_span_expectation => bio8
+    #     },
+    #   ]
+    #   @published = []
+    #   @drafts = []
+    #   invs.each do |inv|
+    #     published = Factory.create(:investigation, inv)
+    #     published.name << " (published) "
+    #     published.publish!
+    #     published.save
+    #     @published << published.reload
+    #     draft = Factory.create(:investigation, inv)
+    #     draft.name << " (draft) "
+    #     draft.save
+    #     @drafts << draft.reload
+    #   end
+    #   @public_non_gse = Factory.create(:investigation, :name => "published non-gse investigation");
+    #   @public_non_gse.publish!
+    #   @public_non_gse.save
+    #   @public_non_gse.reload
+    #   @draft_non_gse  = Factory.create(:investigation, :name => "draft non-gse investigation"); 
+    # 
+    #   @investigation = Investigation.find_by_name_and_publication_status('grade 7 physics', 'published')
+    #   
+    #   @probe_activity_published = Factory.create(:activity, :name => 'probe_activity(published)')
+    #   @probe_activity_published.investigation = @investigation
+    #   @probe_activity_published.save!
+    #   
+    #   section = Factory.create(:section)
+    #   section.activity = @probe_activity_published
+    #   section.save!
+    #   
+    #   page = Factory.create(:page)
+    #   page.section = section
+    #   page.save!
+    #   
+    #   page_element = PageElement.new
+    #   page_element.id = 1
+    #   page_element.page = page
+    #   page_element.embeddable_type = 'Embeddable::DataCollector'
+    #   page_element.save!
+    #   
+    #   embeddable_data_collectors = Factory.create(:data_collector)
+    #   
+    #   page_element.embeddable = embeddable_data_collectors
+    #   page_element.save!
+    #   
+    #   @probe_type = Factory.create(:probe_type)
+    #   embeddable_data_collectors.probe_type = @probe_type
+    #   embeddable_data_collectors.save!
+    # end
     # search (including drafts):
     # search for drafts in grade 8                # two entries
     
     it "should find all grade 8 phsysics investigations, including drafts" do
+      pending "Equivalent spec suite elsewhere"
       options = {
-        :grade_span => @eight,
-        :domain_id  => @physics.id,
+        :grade_span => [@eight],
+        :domain_id  => [@physics.id],
         :include_drafts => true
       }
       found = Investigation.search_list(options)
@@ -164,8 +202,9 @@ describe Investigation do
 
   
     it "should find all grade phsysics investigations, including drafts" do
+      pending "Equivalent spec suite elsewhere"
       options = {
-        :domain_id  => @physics.id,
+        :domain_id  => [@physics.id],
         :include_drafts => true
       }
       found = Investigation.search_list(options)
@@ -175,6 +214,7 @@ describe Investigation do
     end
 
     it "should find all public and draft investigations" do
+      pending "Equivalent spec suite elsewhere"
       options = {
         :include_drafts => true
       }
@@ -184,6 +224,7 @@ describe Investigation do
     end
 
     it "should find all public and draft NON-GSE investigations too" do
+      pending "Equivalent spec suite elsewhere"
       options = {
         :include_drafts => true
       }
@@ -193,9 +234,10 @@ describe Investigation do
     end
     
     it "should find only published, in grade 8 physics domain" do
+      pending "Equivalent spec suite elsewhere"
       options = {
-        :grade_span => @eight,
-        :domain_id  => @physics.id,
+        :grade_span => [@eight],
+        :domain_id  => [@physics.id],
         :include_drafts => false
       }
       found = Investigation.search_list(options)
@@ -207,9 +249,10 @@ describe Investigation do
       end
     end
 
-    it "should find only published in pysics domain" do
+    it "should find only published in physics domain" do
+      pending "Equivalent spec suite elsewhere"
       options = {
-        :domain_id  => @physics.id,
+        :domain_id  => [@physics.id],
         :include_drafts => false
       }
       found = Investigation.search_list(options)
@@ -221,6 +264,7 @@ describe Investigation do
     end
     
     it "should find all published investigations" do
+      pending "Equivalent spec suite elsewhere"
       options = {
         :include_drafts => false
       }
@@ -229,59 +273,76 @@ describe Investigation do
       found.should include(@public_non_gse)
       found.should_not include(*@drafts)
     end
+    it "should search investigations that require probes" do
+      pending "Equivalent spec suite elsewhere"
+      options = {
+        :include_drafts => false,
+        :probe_type => [@probe_type.id]
+      }
+      found = Investigation.search_list(options)
+      assert_equal found.length, 1
+      found.should include(@investigation)
+    end
+    it "should search investigations that does require probes" do
+      pending "Equivalent spec suite elsewhere"
+      options = {
+        :include_drafts => false,
+        :probe_type => ['0']
+      }
+      found = Investigation.search_list(options)
+      found.should_not include(@investigation)
+    end
   end 
 
-  describe "investigation with activities" do
-    before(:each) do
-      @inv_attributes = {
+  describe "with activities" do
+    let (:inv_attributes) { {
         :name => "test investigation",
         :description => "new decription"
-      }
-      @investigation = Investigation.create(@inv_attributes)
-    end
+      } }
+    let (:investigation) { Factory.create(:investigation, inv_attributes) }
+    let (:activity_one)  { Factory.create(:activity) }
+    let (:activity_two)  { Factory.create(:activity) }
 
     # We might want to have one activity in the future. 
-    it "should have no acitivities initially" do
-      @investigation.should have(0).activities
+    it "should have no activities initially" do
+      investigation.should have(0).activities
     end
 
-    it "should have one activitiy after it is added" do
-      @investigation.activities << Factory(:activity)
-      @investigation.should have(1).activities
+    it "should have one activity after it is added" do
+      investigation.activities << activity_one
+      investigation.should have(1).activities
     end
 
     it "the position of the first activity should be 1" do
-      activity = Factory(:activity)
-      @investigation.activities << activity
-      @investigation.should have(1).activities
-      @investigation.save
-      activity.position.should_not be_nil
-      activity.position.should eql 1
+      investigation.activities << activity_one
+      activity_one.insert_at(1)
+      investigation.should have(1).activities
+      activity_one.position.should_not be_nil
+      activity_one.position.should eql 1
     end
 
-
-    it "the position of the first activity should be 1" do
-      activity_one = Factory(:activity) 
-      activity_two = Factory(:activity)
-      @investigation.activities << activity_one
-      @investigation.activities << activity_two
-      @investigation.should have(2).activities
+    it "the position of the second activity should be 2" do
+      investigation.activities << activity_one
+      investigation.activities << activity_two
+      investigation.should have(2).activities
+      activity_one.insert_at(1)
+      activity_two.insert_at(2)
       activity_one.position.should eql 1
       activity_two.position.should eql 2
     end
 
     it "the activities honor the acts_as_list methods" do
-      activity_one = Factory(:activity) 
-      activity_two = Factory(:activity)
-      @investigation.activities << activity_one
-      @investigation.activities << activity_two
+      investigation.activities << activity_one
+      investigation.activities << activity_two
+      activity_one.insert_at(1)
+      activity_two.insert_at(2)
       
-      @investigation.reload
-      @investigation.activities.should eql([activity_one, activity_two])
+      investigation.reload
+      investigation.activities.should eql([activity_one, activity_two])
 
       activity_one.move_to_bottom
-      @investigation.reload
-      @investigation.activities.should eql([activity_two, activity_one])
+      investigation.reload
+      investigation.activities.should eql([activity_two, activity_one])
       
       # must reload the other activity for updated position.
       activity_two.reload
@@ -329,6 +390,164 @@ describe Investigation do
     end
   end
 
+  describe "finding and cleaning broken investigations" do
+    before :each do
+      @bad  = Investigation.create!(@valid_attributes)
+      @good = Investigation.create!(@valid_attributes)
+      @bad_with_learners  = Investigation.create!(@valid_attributes)
+      @offering = mock_model(Portal::Offering, :can_be_deleted? => false)
+      @bad_page_element = mock_model(PageElement, :embeddable => nil)
+      @good_page_element = mock_model(PageElement, :embeddable => mock_model(Embeddable::MultipleChoice))
+      @good.stub(:page_elements => [@good_page_element,@good_page_element])
+      @bad.stub(:page_elements => [@good_page_element, @bad_page_element, @good_page_element])
+      @bad_with_learners.stub(:page_elements => [@good_page_element, @bad_page_element, @good_page_element])
+      @bad_with_learners.stub(:offerings => [@offering])
+      Investigation.stub!(:all => [@good,@bad,@bad_with_learners])     
+    end
+
+    describe "broken investigations" do
+      describe "broken_parts" do
+        it "should return a list of a broken page_elements" do
+          @bad.broken_parts.should_not be_empty
+          @bad_with_learners.broken_parts.should_not be_empty
+        end
+        it "should return an empty list if the investigation is fine" do
+          @good.broken_parts.should be_empty
+        end
+      end
+      
+      describe "broken?" do
+        it "investigation with broken parts should be marked as broken" do
+          @good.should_not be_broken
+          @bad.should be_broken
+          @bad_with_learners.should be_broken
+        end
+      end
+
+      describe "Investigation#broken" do
+        it "should return a list of broken investigations" do
+          Investigation.broken.should include @bad
+          Investigation.broken.should_not include @good
+        end
+      end
+    end #broken investigations
+
+    describe "deleting broken investigations" do
+      describe "can_be_modified?" do
+        it "should return true for investigations without learners" do
+          @good.should be_can_be_modified
+          @bad.should be_can_be_modified
+        end
+        it "should return false for investigations with learners" do
+          @bad_with_learners.should_not be_can_be_modified
+        end
+      end
+
+      describe "can_be_deleted?" do
+        it "should return true for investigations without learners" do
+          @good.can_be_deleted?.should == true
+          @bad.can_be_deleted?.should == true
+        end
+        it "should return false for investigations with learners" do
+          @bad_with_learners.can_be_deleted?.should == false
+        end
+      end
+
+      describe "delete_broken" do
+        it "should send 'destroy' messages to broken investigations without learners" do
+          @bad_with_learners.should_not_receive(:destroy)
+          @good.should_not_receive(:destroy)
+          @bad.should_receive(:destroy)
+          Investigation.delete_broken
+        end
+      end
+    end # deleting broken investigations
+  end
+
+  describe "#is_template method" do
+    let(:investigation)        { nil }
+    let(:external_activities)  { [] }
+    let(:activity_externals)    { [] }
+    let(:activity)             { mock(:external_activities => activity_externals) }
+    let(:activities)           { [activity] }
+    subject do
+      s = Factory.create(:investigation)
+      s.stub!(:external_activities => external_activities)
+      s.stub!(:activities => activities)
+      s.is_template
+    end
+    describe "when an investigation has an activity that is a template" do
+      let(:activity_externals) { [1,2,3] }
+      it { should be_true }
+    end
+    describe "when an investigation has an activity that is not a template" do
+      describe "when an investigation has external_activities" do
+        let(:external_activities) { [1,2,3]}
+        it { should be_true}
+      end
+      describe "when an investigation has no external_activities" do
+        let(:external_activities) {[]}
+        it { should be_false}
+      end
+    end  
+  end
+
+  describe '#is_template scope' do
+    before(:each) do
+      e1 = Factory.create(:external_activity)
+      e2 = Factory.create(:external_activity)
+      a = Factory.create(:activity, external_activities: [e2])
+      @i1 = Factory.create(:investigation)
+      @i2 = Factory.create(:investigation, external_activities: [e1])
+      @i3 = Factory.create(:investigation, activities: [a])
+    end
+
+    it 'should return investigations which are not templates if provided argument is false' do
+      expect(Investigation.is_template(false).count).to eql(1)
+      expect(Investigation.is_template(false).first).to eql(@i1)
+    end
+
+    it 'should return investigations which are templates if provided argument is true' do
+      expect(Investigation.is_template(true).count).to eql(2)
+      expect(Investigation.is_template(true).first).to eql(@i2)
+      expect(Investigation.is_template(true).last).to eql(@i3)
+    end
+  end
+
+
+  describe "abstract_text" do
+    let(:abstract)    { nil }
+    let(:big_text) { "-xyzzy" * 255 }
+    let(:description) do 
+      "This is the description. Its text is too long to be an abstract really: #{big_text}"
+    end
+
+    subject { Factory.create(:investigation, :abstract => abstract, :description => description) }
+    describe "without an abstract" do
+      let(:abstract)         { nil }
+      its(:abstract_text)    { should match /This is the description./ }
+      its(:abstract_text)    { should have_at_most(255).letters }
+    end
+    describe "without an empty abstract" do
+      let(:abstract)         { " " }
+      its(:abstract_text)    { should match /This is the description./ }
+      its(:abstract_text)    { should have_at_most(255).letters }
+    end
+    describe "without a good abstract" do
+      let(:abstract)         { "This is the abstract." }
+      its(:abstract_text)    { should match /This is the abstract./ }
+    end
+  end
+
+  describe "project support" do
+    let (:investigation) { Factory.create(:investigation) }
+    let (:project) { FactoryGirl.create(:project) }
+
+    it "can be assigned to a project" do
+      investigation.projects << project
+      expect(investigation.projects.count).to eql(1)
+    end
+  end
 end
 
 

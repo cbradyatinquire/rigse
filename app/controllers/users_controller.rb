@@ -1,13 +1,12 @@
 class UsersController < ApplicationController
-  # skip_before_filter :verify_authenticity_token, :only => :create
-  #access_rule 'admin', :only => [:index, :show, :new, :edit, :update, :destroy]
-  #access_rule 'admin || manager || researcher', :only => [:index, :account_report]
+
   include RestrictedController
   before_filter :changeable_filter,
     :only => [
       :show,
       :edit,
       :update,
+      :reset_password
     ]
   before_filter :manager, :only => [:destroy]
   before_filter :manager_or_researcher,
@@ -15,15 +14,21 @@ class UsersController < ApplicationController
       :index,
       :account_report
     ]
+  after_filter :store_location, :only => [:index]
 
   def changeable_filter
     @user = User.find(params[:id])
-    redirect_home unless @user.changeable?(current_user)
+    redirect_home unless @user.changeable?(current_visitor)
+  end
+
+  def new
+    #This method is called when a user tries to register as a member
+    @user = User.new
   end
 
   def index
     if params[:mine_only]
-      @users = User.search(params[:search], params[:page], self.current_user)
+      @users = User.search(params[:search], params[:page], self.current_visitor)
     else
       @users = User.search(params[:search], params[:page], nil)
     end
@@ -42,38 +47,27 @@ class UsersController < ApplicationController
       format.xml  { render :xml => @user }
     end
   end
-
-  def new
-    @user = User.new
-  end
-
-  def create
-    logout_keeping_session!
-    create_new_user(params[:user])
-    # redirect_to(root_path) # (no need to redirect here, the above controller did it.)
-  end
-
   # GET /users/1/edit
   def edit
     @user = User.find(params[:id])
-    @roles = Role.find(:all)
-    unless @user.changeable?(current_user)
+    @roles = Role.all
+    @projects = Admin::Project.all_sorted
+    unless @user.changeable?(current_visitor)
       flash[:warning]  = "You need to be logged in first."
       redirect_to login_url
     end
   end
-
-  # GET /users/1/edit
+# GET /users/1/edit
   def preferences
     @user = User.find(params[:id])
-    @roles = Role.find(:all)
-    unless @user.changeable?(current_user)
+    @roles = Role.all
+    @projects = Admin::Project.all_sorted
+    unless @user.changeable?(current_visitor)
       flash[:warning]  = "You need to be logged in first."
       redirect_to login_url
     end
   end
-
-  # /users/1/switch
+   # /users/1/switch
   def switch
     # @original_user is setup in app/controllers/application_controller.rb
     unless @original_user.has_role?('admin', 'manager')
@@ -81,8 +75,8 @@ class UsersController < ApplicationController
     else
       if request.get?
         @user = User.find(params[:id])
-        all_users = User.active.find(:all)
-        all_users.delete(current_user)
+        all_users = User.active.all
+        all_users.delete(current_visitor)
         all_users.delete(User.anonymous)
         all_users.delete_if { |user| user.has_role?('admin') } unless @original_user.has_role?('admin')
 
@@ -94,47 +88,56 @@ class UsersController < ApplicationController
 
         users = all_users.group_by do |u|
           case
-          when u.default_user then :default_users
-          when u.email[/no-email/] then :no_email
-          else :email
+          when u.default_user   then :default_users
+          when u.portal_student then :student
+          when u.portal_teacher then :teacher
+          else :regular
           end
         end
-        # to avoid nil values, initialize everything to an empty array if it's non-existent
-        users[:no_email] ||= []
-        users[:email] ||= []
-        users[:default_users] ||= []
-        users[:no_email].sort! { |a, b| a.first_name.downcase <=> b.first_name.downcase }
-        users[:email].sort! { |a, b| a.first_name.downcase <=> b.first_name.downcase }
 
-        @user_list = [ { :name => 'recent' , :users => recent_users },
-                       { :name => 'guest', :users => [User.anonymous] },
-                       { :name => 'regular', :users => users[:email] },
-                       { :name => 'students' , :users => users[:no_email] }
-                     ]
+        # to avoid nil values, initialize everything to an empty array if it's non-existent
+        # users[:student] ||= []
+        # users[:regular] ||= []
+        # users[:default_users] ||= []
+        # users[:student].sort! { |a, b| a.first_name.downcase <=> b.first_name.downcase }
+        # users[:regular].sort! { |a, b| a.first_name.downcase <=> b.first_name.downcase }
+        [:student, :regular, :default_users, :student, :teacher].each do |ar|
+          users[ar] ||= []
+          users[ar].sort! { |a, b| a.last_name.downcase <=> b.last_name.downcase }
+        end
+        @user_list = [
+          { :name => 'recent' ,   :users => recent_users     } ,
+          { :name => 'guest',     :users => [User.anonymous] } ,
+          { :name => 'regular',   :users => users[:regular]  } ,
+          { :name => 'students',  :users => users[:student]  } ,
+          { :name => 'teachers',  :users => users[:teacher]  }
+        ]
         if users[:default_users] && users[:default_users].size > 0
           @user_list.insert(2, { :name => 'default', :users => users[:default_users] })
         end
       elsif request.put?
         if params[:commit] == "Switch"
           if switch_to_user = User.find(params[:user][:id])
-            unless session[:original_user_id]  # session[:original_user_auth_token]
-              session[:original_user_id] = current_user.id
-            end
+            switch_from_user = current_visitor
+            original_user_from_session = session[:original_user_id]
             recently_switched_from_users = (session[:recently_switched_from_users] || []).clone
-            recently_switched_from_users.insert(0, current_user.id)
-            self.current_user=(switch_to_user)
+            sign_out self.current_visitor
+            sign_in switch_to_user
+
+            # the original user is only set on the session once:
+            # the first time an admin switches to another user
+            unless original_user_from_session
+              session[:original_user_id] = switch_from_user.id
+            end
+            recently_switched_from_users.insert(0, switch_from_user.id)
             session[:recently_switched_from_users] = recently_switched_from_users.uniq
           end
-        elsif params[:commit] =~ /#{@original_user.name}/
-          self.current_user=(@original_user)
         end
         redirect_to home_path
       end
     end
   end
 
-  # PUT /users/1
-  # PUT /users/1.xml
   def update
     if params[:commit] == "Cancel"
       # FIXME: ugly hack
@@ -149,7 +152,16 @@ class UsersController < ApplicationController
       @user = User.find(params[:id])
       respond_to do |format|
         if @user.update_attributes(params[:user])
-          @user.set_role_ids(params[:user][:role_ids]) if params[:user][:role_ids]
+          @user.set_role_ids(params[:user][:role_ids] || [])
+          @user.set_project_ids(params[:user][:project_ids] || [])
+
+          # set the cohort tags if we have a teacher
+          if @user.portal_teacher && params[:update_cohorts]
+            cohorts = params[:cohorts] ? params[:cohorts] : []
+            @user.portal_teacher.cohort_list = cohorts
+            @user.portal_teacher.save
+          end
+
           flash[:notice] = "User: #{@user.name} was successfully updated."
           format.html do
             if request.env["HTTP_REFERER"] =~ /preferences/
@@ -160,29 +172,13 @@ class UsersController < ApplicationController
           end
           format.xml  { head :ok }
         else
+          # need the roles and projects instance variables for the edit template
+          @roles = Role.all
+          @projects = Admin::Project.all_sorted
           format.html { render :action => "edit" }
           format.xml  { render :xml => @user.errors, :status => :unprocessable_entity }
         end
       end
-    end
-  end
-
-
-  def activate
-    logout_keeping_session!
-    user = User.find_by_activation_code(params[:activation_code]) unless params[:activation_code].blank?
-    case
-    when (!params[:activation_code].blank?) && user && !user.active?
-      user.activate!
-      user.make_user_a_member
-      flash[:notice] = "Signup complete! Please sign in to continue."
-      redirect_to login_path
-    when params[:activation_code].blank?
-      flash[:error] = "The activation code was missing.  Please follow the URL from your email."
-      redirect_back_or_default(root_path)
-    else
-      flash[:error]  = "We couldn't find a user with that activation code -- check your email? Or maybe you've already activated -- try signing in."
-      redirect_back_or_default(root_path)
     end
   end
 
@@ -197,7 +193,7 @@ class UsersController < ApplicationController
     if request.xhr?
       render :partial => 'interface', :locals => { :vendor_interface => @user.vendor_interface }
     else
-      if !@user.changeable?(current_user)
+      if !@user.changeable?(current_visitor)
         flash[:warning]  = "You need to be logged in first."
         redirect_to login_url
       else
@@ -216,8 +212,8 @@ class UsersController < ApplicationController
               end
             end
           else
-            # @vendor_interface = current_user.vendor_interface
-            # @vendor_interfaces = Probe::VendorInterface.find(:all).map { |v| [v.name, v.id] }
+            # @vendor_interface = current_visitor.vendor_interface
+            # @vendor_interfaces = Probe::VendorInterface.all.map { |v| [v.name, v.id] }
             # session[:back_to] = request.env["HTTP_REFERER"]
             # render :action => "interface"
           end
@@ -243,29 +239,43 @@ class UsersController < ApplicationController
     send_data(sio.string, :type => "application/vnd.ms.excel", :filename => "accounts-report.xls" )
   end
 
-  protected
+  def reset_password
+    p = Password.new(:user_id => params[:id])
+    p.save(:validate => false) # we don't need the user to have a valid email address...
+    session[:return_to] = request.referer
+    redirect_to change_password_path(:reset_code => p.reset_code)
+  end
 
-  def create_new_user(attributes)
-    @user = User.new(attributes)
-    if @user && @user.valid?
-      @user.register!
-    end
-    if @user.errors.empty?
-      self.current_user = User.anonymous
-      render :action => :thanks
+  def backdoor
+    sign_out :user
+    user = User.find_by_login!(params[:username])
+    sign_in user
+    head :ok
+  end
+
+  #Used for activation of users by a manager/admin
+  def confirm
+    if current_visitor && current_visitor.has_role?('admin', 'manager')
+      user = User.find(params[:id]) unless params[:id].blank?
+      if !params[:id].blank? && user && user.state != "active"
+        user.confirm!
+        user.make_user_a_member
+        # assume this type of user just activated someone from somewhere else in the app
+        flash[:notice] = "Activation of #{user.name_and_login} complete."
+        redirect_to(session[:return_to] || root_path)
+      end
     else
-      # will redirect:
-      failed_creation
+      flash[:notice] = "Please login as an administrator."
+      redirect_to(root_path)
     end
   end
 
-
-
-  def failed_creation(message = 'Sorry, there was an error creating your account')
-    # force the current_user to anonymous, because we have not successfully created an account yet.
-    # edge case, which we might need a more integrated solution for??
-    self.current_user = User.anonymous
-    flash.now[:error] = message
-    render :action => :new
+  def registration_successful
+    if params[:type] == "teacher"
+      render :template => 'users/thanks'
+    else
+      render :template => 'portal/students/signup_success'
+    end
   end
+
 end

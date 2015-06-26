@@ -9,14 +9,14 @@ describe Portal::GradesController do
   end
 
   before(:each) do
-    generate_default_project_and_jnlps_with_mocks
+    generate_default_settings_and_jnlps_with_mocks
     generate_portal_resources_with_mocks
     login_admin
   end
 
   describe "GET index" do
     it "assigns all portal_grades as @portal_grades" do
-      Portal::Grade.stub!(:find).with(:all).and_return([mock_grade])
+      Portal::Grade.stub!(:all).and_return([mock_grade])
       get :index
       assigns[:portal_grades].should == [mock_grade]
     end

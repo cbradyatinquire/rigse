@@ -1,5 +1,5 @@
 class Embeddable::DrawingTool < ActiveRecord::Base
-  set_table_name "embeddable_drawing_tools"
+  self.table_name = "embeddable_drawing_tools"
 
   
   belongs_to :user
@@ -26,9 +26,6 @@ class Embeddable::DrawingTool < ActiveRecord::Base
 
   send_update_events_to :investigations
 
-  def self.display_name
-    "Draw Tool"
-  end
   
   def investigations
     invs = []

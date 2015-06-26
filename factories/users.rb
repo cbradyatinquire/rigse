@@ -21,10 +21,14 @@ Factory.define :user do |f|
   f.password  'password' 
   f.password_confirmation  {|u| u.password}
   f.skip_notifications true
+  f.require_password_reset false
   f.roles  { [ Factory.next(:member_role)] }
   f.vendor_interface { |d| Probe::VendorInterface.find(:first) || Factory(:probe_vendor_interface) }
 end
 
+Factory.define :confirmed_user, :parent => :user do |f|
+  f.after_create { |user| user.confirm! }
+end
 
 ##
 ## Singleton Factory Pattern for Admin user.
@@ -40,9 +44,9 @@ Factory.sequence :admin_user do |n|
       :site_admin => 1,
       :roles => [Factory.next(:member_role),Factory.next(:admin_role)]
     })
-    admin.register
-    admin.activate
     admin.save!
+    admin.confirm!
+    admin.add_role('admin')
   end
   admin
 end
@@ -61,13 +65,53 @@ Factory.sequence :researcher_user do |n|
       :site_admin => 0,
       :roles => [Factory.next(:member_role),Factory.next(:researcher_role)]
     })
-    researcher.register
-    researcher.activate
     researcher.save!
+    researcher.confirm!
+    researcher.add_role('researcher')
   end
   researcher
 end
 
+##
+## Singleton Factory Pattern for Researcher user.
+##
+Factory.sequence :manager_user do |n| 
+  manager = User.find_by_login('manager') 
+  unless manager
+    manager = Factory(:user,
+    {
+      :login => 'manager',
+      # :password =>'password',  # all passwords are 'password' (defined in user factory)
+      :first_name => 'manager',
+      :site_admin => 1,
+      :roles => [Factory.next(:member_role),Factory.next(:manager_role)]
+    })
+    manager.save!
+    manager.confirm!
+    manager.add_role('manager')
+  end
+  manager
+end
+##
+## Singleton Factory Pattern for Researcher user.
+##
+Factory.sequence :author_user do |n| 
+  author = User.find_by_login('author') 
+  unless author
+    author = Factory(:user,
+    {
+      :login => 'author',
+      # :password =>'password',  # all passwords are 'password' (defined in user factory)
+      :first_name => 'author',
+      :site_admin => 0,
+      :roles => [Factory.next(:member_role),Factory.next(:author_role)]
+    })
+    author.save!
+    author.confirm!
+    author.add_role('author')
+  end
+  author
+end
 ##
 ## Singleton Factory Pattern for Anonymous user.
 ##
@@ -82,11 +126,13 @@ Factory.sequence :anonymous_user do |n|
         :first_name => 'anonymous',
         :roles => [Factory.next(:guest_role)]
       })
-      anon.register
-      anon.activate
+      anon.save!
+      anon.confirm!
       # clear any previous Anonymous user still cached as a class variable in the User class
       User.anonymous(true)
       anon.save!
+      anon.add_role('guest')
+      
     end
     anon
   rescue

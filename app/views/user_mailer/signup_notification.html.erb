@@ -1,7 +1,5 @@
-Your account has been created.
+<p>Welcome <%= @user.login %>!</p>
 
-Username: <%= @user.login %>
+<p>You can confirm your account email through the link below:</p>
 
-Visit this url to activate your account:
-
-<%= @url %>
+<p><%= link_to 'Confirm my account', confirmation_url(@user, :confirmation_token => @user.confirmation_token) %></p>

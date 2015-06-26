@@ -4,14 +4,15 @@ Feature: The Project administrator disables certain vendor interfaces
   So that I can provide a smaller list of well tested interfaces
 
   Background:
-    Given The default project and jnlp resources exist using factories
+    Given The default settings and jnlp resources exist using factories
+    And the database has been seeded
 
+  @javascript
   Scenario: The project administrator removes some probe interfaces
     Given the following users exist:
       | login        | password            | roles                |
-      | admin_login  | admin_password      | admin, member, author|
       | student_login| student_password    | member               |
-    And I login with username: admin_login password: admin_password
+    And I login as an admin
     And the following vendor interfaces exist:
       | name             | description              |
       | pasco usb        | a pasco usb interface    |
@@ -19,15 +20,15 @@ Feature: The Project administrator disables certain vendor interfaces
       | radios hack RS232| old school interface     |
       | Texas Instruments| good old TI interface    |
       | pasco bluetooth  | pasco in the house       |
-    And the current project is using the following interfaces:
+    And the current settings is using the following interfaces:
       | name             |
       | pasco usb        |
       | vernier usb      |
       | radios hack RS232|
       | Texas Instruments|
       | pasco bluetooth  |
-    When I go to the current project edit page
-    Then I should see "Default Project"
+    When I go to the current settings edit page
+    Then I should see "Default Settings"
     And I should see "Vendor Interfaces"
     Then I should see the following form checkboxes:
       | name              | checked |
@@ -44,8 +45,8 @@ Feature: The Project administrator disables certain vendor interfaces
       | Texas Instruments| false   |
       | pasco bluetooth  | true    |
     And I press "Save"
-    Then I should see "Project was successfully updated"
-    When I go to the current project edit page
+    Then I should see "Settings was successfully updated"
+    When I go to the current settings edit page
     Then I should see the following form checkboxes:
       | name             | checked |
       | pasco usb        | true    |
@@ -57,7 +58,6 @@ Feature: The Project administrator disables certain vendor interfaces
   Scenario: The student user can only select configured interfaces
     Given the following users exist:
       | login        | password            | roles                |
-      | admin_login  | admin_password      | admin, member, author|
       | student_login| student_password    | member               |
     And the following vendor interfaces exist:
       | name             | description              |
@@ -66,13 +66,13 @@ Feature: The Project administrator disables certain vendor interfaces
       | radios hack RS232| old school interface     |
       | Texas Instruments| good old TI interface    |
       | pasco bluetooth  | pasco in the house       |
-    And the current project is using the following interfaces:
+    And the current settings is using the following interfaces:
       | name             |
       | pasco usb        |
       | vernier usb      |
 
-    When I login with username: student_login password: student_password
-    When I follow "Preferences"
+    When I login with username: student_login
+    When I follow "My Preferences"
     Then I should see "User Preferences"
     And I should see "Probeware Interface"
     Then I should have the following selection options:

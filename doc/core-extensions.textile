@@ -9,6 +9,9 @@ h3. Hash
 Hash is extended with a method: recursive_symbolize_keys which Recursively converts the keys in a Hash to symbols.
 It also converts the keys in any Array elements which are Hashes to symbols.
 
++Note+: This extension has been moved to lib/app_settings.rb since it was required there for loading the settings
+file into APP_CONFIG.
+
 h3. Kernel
 
 Kernel is extended with the method: suppress_warnings
@@ -22,7 +25,27 @@ h3. String
 
 String is extended with the methods: underscore_module, delete_module(num=1)
 
+h3. Object
 
-h2. Rails
+Object is extended with the method: @display_name@
 
-ActionView::Helpers::CaptureHelper is extended with the method:  set_content_for
+@Object#display_name@ calls into @LocalNames.instance#local_name_for@ in @lib/local_names.rb@.
+The default behavior for @#display_name@, can be customized by editing @config/local_names.yml@.
+
+The return value for @#display_name@ is determined by evaluating these criterea:
+# By default, the method returns a human readable version of an objects class name.
+# Class Objects return a readable version of their own name.
+# Strings return their value.
+# If the object has redefeined "display_name" that value is used.
+# If there is an entry for the classname or string literal in @config/local_names.yml@ its replacement value will be used.
+##  The @default:@ entry in @config/local_names.yml@  is used by default.
+##  A 'theme-spefic' value may be used instead by defining a section in the yaml with your themes name. 
+
+Sample @config/local_names.yml@:
+<pre><code>
+---
+default:
+  Portal::Clazz : Class
+smartgraphs:
+  Portal::Clazz : Study Group
+</code></pre>

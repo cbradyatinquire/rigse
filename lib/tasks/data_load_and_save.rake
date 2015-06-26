@@ -33,7 +33,7 @@ end
 def interesting_tables
   tables = ActiveRecord::Base.connection.tables.sort
   tables.reject! do |tbl|
-    %w{schema_migrations sessions roles_users admin_projects}.include?(tbl)
+    %w{schema_migrations sessions roles_users admin_settings}.include?(tbl)
   end
   tables
 end
@@ -55,7 +55,7 @@ namespace :db do
 
     desc "Saves the db to yaml fixures in config/db/backup." 
     task :save => :environment do 
-      dir = RAILS_ROOT + '/config/db_backup'
+      dir = ::Rails.root.to_s + '/config/db_backup'
       FileUtils.mkdir_p(dir)
       FileUtils.chdir(dir) do
         interesting_tables.each do |tbl|
@@ -70,7 +70,7 @@ namespace :db do
 
     desc "Loads the db from yaml fixures in config/db/backup" 
     task :load => [:environment] do 
-      dir = RAILS_ROOT + '/config/db_backup'
+      dir = ::Rails.root.to_s + '/config/db_backup'
       FileUtils.chdir(dir) do
         interesting_tables.each do |tbl|
 
@@ -101,7 +101,7 @@ namespace :db do
 
     desc "Save the interface/probe configuration data to yaml fixtures in config/probe_configurations." 
     task :save_probe_configurations => :environment do 
-      dir = RAILS_ROOT + '/config/probe_configurations'
+      dir = ::Rails.root.to_s + '/config/probe_configurations'
       FileUtils.chdir(dir) do
         tables = %w{probe_device_configs probe_data_filters probe_vendor_interfaces probe_physical_units probe_calibrations probe_probe_types}
         tables.each do |tbl|
@@ -122,7 +122,7 @@ namespace :db do
 
     desc "Load just the probe configurations from yaml fixtures in config/probe_configurations." 
     task :load_probe_configurations => :environment do 
-      dir = RAILS_ROOT + '/config/probe_configurations'
+      dir = ::Rails.root.to_s + '/config/probe_configurations'
       # Normally these models will be owned by the site_admin but if the site_admin doesn't
       # exist or we are loading these into the test database set the user_id value to -1
       user_id = User.site_admin ? User.site_admin.id : -1
@@ -147,7 +147,7 @@ namespace :db do
                     data[c.name] = user_id
                   end
                 end
-                ActiveRecord::Base.connection.execute "INSERT INTO #{tbl} (#{data.keys.join(",")}) VALUES (#{data.values.collect { |value| ActiveRecord::Base.connection.quote(value) }.join(",")})", 'Fixture Insert'
+                ActiveRecord::Base.connection.execute "INSERT INTO #{tbl} (#{data.keys.join(",")},created_at,updated_at) VALUES (#{data.values.collect { |value| ActiveRecord::Base.connection.quote(value) }.join(",")},NOW(),NOW())", 'Fixture Insert'
               end        
             rescue StandardError => e
               puts e
@@ -160,7 +160,7 @@ namespace :db do
 
     desc "Save the RI grade span expectationss from yaml fixtures in config/rigse_data/fixtures." 
     task :save_ri_grade_span_expectations => :environment do 
-      dir = RAILS_ROOT + '/config/rigse_data/fixtures'
+      dir = ::Rails.root.to_s + '/config/rigse_data/fixtures'
       FileUtils.mkdir_p(dir)
       FileUtils.chdir(dir) do
         tables = %w{ri_gse_assessment_targets ri_gse_assessment_target_unifying_themes ri_gse_big_ideas 
@@ -178,7 +178,7 @@ namespace :db do
 
     desc "Load just the RI grade span expectationss from yaml fixtures in config/rigse_data/fixtures" 
     task :load_ri_grade_span_expectations => :environment do 
-      dir = RAILS_ROOT + '/config/rigse_data/fixtures'
+      dir = ::Rails.root.to_s + '/config/rigse_data/fixtures'
       # Normally these models will be owned by the site_admin but if the site_admin doesn't
       # exist or we are loading these into the test database set the user_id value to -1
       user_id = User.site_admin ? User.site_admin.id : -1
@@ -204,7 +204,7 @@ namespace :db do
                     data[c.name] = user_id
                   end
                 end
-                ActiveRecord::Base.connection.execute "INSERT INTO #{tbl} (#{data.keys.join(",")}) VALUES (#{data.values.collect { |value| ActiveRecord::Base.connection.quote(value) }.join(",")})", 'Fixture Insert'
+                ActiveRecord::Base.connection.execute "INSERT INTO #{tbl} (#{data.keys.collect {|value| "`#{value}`"}.join(",")}) VALUES (#{data.values.collect { |value| ActiveRecord::Base.connection.quote(value) }.join(",")})", 'Fixture Insert'
               end        
             rescue StandardError => e
               puts e
@@ -253,7 +253,7 @@ namespace :db do
     desc "Dump the db to a rough Factory Girl format"
     task :dump_to_factory_girl => :environment do
       @skip_attrs = ["id", "created_at", "updated_at", "uuid"]
-      @namespaced = {"maven_jnlp_" => "MavenJnlp::", "admin_" => "Admin::", "dataservice_" => "Dataservice::", "otrunk_example_" => "OtrunkExample::", "portal_" => "Portal::"}
+      @namespaced = {"admin_" => "Admin::", "dataservice_" => "Dataservice::", "otrunk_example_" => "OtrunkExample::", "portal_" => "Portal::"}
       # @non_rich_joins = ["jars_versioned_jnlps","portal_courses_grade_levels","portal_grade_levels_teachers"]
       ActiveRecord::Base.connection.tables.each do |table|
         print "Dumping #{table}... "
@@ -271,14 +271,14 @@ namespace :db do
         end
         f = nil
         if cols.include?("id")
-          f = File.open("#{RAILS_ROOT}/features/factories/#{table}.rb", "w")
+          f = File.open("#{::Rails.root.to_s}/features/factories/#{table}.rb", "w")
           f.write "Factory.define :#{tablename}#{classname} do |f|\n"
           f.write "end\n\n"
         else
           if @just_factories
             # no op
           else
-            f = File.open("#{RAILS_ROOT}/features/factories/#{table}.rb", "w")
+            f = File.open("#{::Rails.root.to_s}/features/factories/#{table}.rb", "w")
             f.write "# #{table}: This is a non-rich join table\n\n"
           end
         end

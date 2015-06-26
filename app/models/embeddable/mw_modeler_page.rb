@@ -1,5 +1,5 @@
 class Embeddable::MwModelerPage < ActiveRecord::Base
-  set_table_name "embeddable_mw_modeler_pages"
+  self.table_name = "embeddable_mw_modeler_pages"
 
   
   belongs_to :user
@@ -26,9 +26,6 @@ class Embeddable::MwModelerPage < ActiveRecord::Base
 
   send_update_events_to :investigations
 
-  def self.display_name
-    "Molecular Workbench Model"
-  end
 
   def investigations
     invs = []

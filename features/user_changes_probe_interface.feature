@@ -5,13 +5,12 @@ Feature: A user changes which probeware interface they are using
   In order to use the specific type of probeware I have
 
   Background:
-    Given The default project and jnlp resources exist using factories
+    Given The default settings and jnlp resources exist using factories
+    And the database has been seeded
 
+  @javascript
   Scenario: Student changes probeware interface on preferences page
-    Given the following students exist:
-      | login     | password  |
-      | student   | student   |
-    And I login with username: student password: student
+    And I am logged in with the username student
     When I go to my preferences
     And I select "Fourier Ecolog" from "user_vendor_interface_id"
     And I press "Save"

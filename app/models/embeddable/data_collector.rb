@@ -5,7 +5,7 @@ class Embeddable::DataCollector < ActiveRecord::Base
   PREDICTION    = "Prediction"
   PREDICTION_ID = 2
 
-  set_table_name "embeddable_data_collectors"
+  self.table_name = "embeddable_data_collectors"
 
   belongs_to :user
   belongs_to :probe_type, :class_name => 'Probe::ProbeType'
@@ -39,7 +39,7 @@ class Embeddable::DataCollector < ActiveRecord::Base
   # validates_associated :probe_type, :message => "must exist"
   
   validates_presence_of :name, :message => "can't be blank"
-  
+  validates_inclusion_of :dd_font_size, :in => 9..300, :message => "font outside of range 9 -> 300"
   
   # this could work if the finder sql was redone
   # has_many :investigations,
@@ -50,19 +50,23 @@ class Embeddable::DataCollector < ActiveRecord::Base
 
   serialize :data_store_values
   
-  def before_save
-    if self.title
-      self.name = self.title
-    end
-  end
-  
-  def before_validation
+  before_validation :set_default_probe_type_attributes
+
+  def set_default_probe_type_attributes
     default_pt = Embeddable::DataCollector.default_probe_type
     self.probe_type_id = default_pt.id unless self.probe_type_id
     self.name = title unless self.title.nil? || self.title.empty?
     self.name = default_pt.name if self.name.nil? || self.name.empty?
     self.title = self.name if self.title.nil? || self.title.empty?
     self.y_axis_label = default_pt.name unless self.y_axis_label
+  end
+
+  before_save :copy_title_to_name
+  
+  def copy_title_to_name
+    if self.title
+      self.name = self.title
+    end
   end
   
   acts_as_replicatable
@@ -123,6 +127,14 @@ class Embeddable::DataCollector < ActiveRecord::Base
   
   def self.prediction_graphs
     Embeddable::DataCollector.find_all_by_graph_type_id(2)
+  end
+
+  # Preset font sizes for the digital display:
+  def self.dd_font_sizes
+    return {
+      :small =>  30,
+      :medium => 100,
+      :large  => 260}
   end
   
   def ot_button_str
@@ -203,7 +215,7 @@ class Embeddable::DataCollector < ActiveRecord::Base
   
   default_value_for :name, "Data Graph"
   default_value_for :description, "Data Collector Graphs can be used for sensor data or predictions."
-
+  
   # default_value_for :y_axis_label, default_probe_type.name
   # default_value_for :y_axis_label, 'Temperature'
   
@@ -219,6 +231,10 @@ class Embeddable::DataCollector < ActiveRecord::Base
                  :show_tare                   =>  false,
                  :single_value                =>  false
 
+  default_value_for :dd_font_size do
+    Embeddable::DataCollector.dd_font_sizes[:small]
+  end
+
   # default_value_for :probe_type, default_probe_type
   # default_value_for :probe_type_id, 1
   
@@ -227,19 +243,7 @@ class Embeddable::DataCollector < ActiveRecord::Base
   def display_type
     graph_type
   end
-  
-  def self.display_name
-    "Graph"
-  end
 
-  def self.authorable_in_java?
-    true
-  end
-
-  def authorable_in_java?
-    Embeddable::DataCollector.authorable_in_java?
-  end
-  
   def update_from_otml_library_content
     olc = Hash.from_xml(otml_library_content)
     if ot_data_collector = olc['OTDataCollector']

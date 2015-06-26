@@ -1,5 +1,5 @@
 class Embeddable::Biologica::MeiosisView < ActiveRecord::Base
-  set_table_name "embeddable_biologica_meiosis_views"
+  self.table_name = "embeddable_biologica_meiosis_views"
 
   
   belongs_to :user
@@ -42,9 +42,6 @@ class Embeddable::Biologica::MeiosisView < ActiveRecord::Base
 
   send_update_events_to :investigations
 
-  def self.display_name
-    "Biologica Meiosis View"
-  end
 
   def investigations
     invs = []

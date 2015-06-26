@@ -19,17 +19,17 @@ class RiGse::GradeSpanExpectationsController < ApplicationController
       format.html do
         @search_string = params[:search]
         if params[:mine_only]
-          @grade_span_expectations = RiGse::GradeSpanExpectation.search(params[:search], params[:page], self.current_user, [{:expectations => [:expectation_indicators, :expectation_stem]}])
+          @grade_span_expectations = RiGse::GradeSpanExpectation.search(params[:search], params[:page], self.current_visitor, [{:expectations => [:expectation_indicators, :expectation_stem]}])
         else
           @grade_span_expectations = RiGse::GradeSpanExpectation.search(params[:search], params[:page], nil)
         end
       end
       format.xml do
-        @grade_span_expectations = RiGse::GradeSpanExpectation.find(:all)
+        @grade_span_expectations = RiGse::GradeSpanExpectation.all
         render :xml => @grade_span_expectations
       end
       format.pdf do
-        @grade_span_expectations = RiGse::GradeSpanExpectation.find(:all)        
+        @grade_span_expectations = RiGse::GradeSpanExpectation.all        
         @rendered_partial = render_to_string :partial => 'expectation_list.html.haml', 
           :locals => { :grade_span_expectations => @grade_span_expectations }
         @rendered_partial.gsub!(/&/, '&amp;')

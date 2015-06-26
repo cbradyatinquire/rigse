@@ -1,7 +1,20 @@
 class Portal::TeachersController < ApplicationController
   include RestrictedPortalController
+  before_filter :teacher_admin_or_manager, :except=> [:new, :create]
   public
-  
+
+  def teacher_admin_or_manager
+    if current_visitor.has_role?('admin') ||
+       current_visitor.has_role?('manager') ||
+       (current_visitor.portal_teacher && current_visitor.portal_teacher.id.to_s == params[:id])
+       # this user is authorized
+       true
+    else
+      flash[:notice] = "Please log in as an administrator or manager"
+      redirect_to(:home)
+    end
+  end
+
   # GET /portal_teachers
   # GET /portal_teachers.xml
   def index
@@ -23,13 +36,11 @@ class Portal::TeachersController < ApplicationController
     end
   end
 
-  # GET /portal_teachers/new
+  # GET /portal_teachers/view
   # GET /portal_teachers/new.xml
   def new
     @portal_teacher = Portal::Teacher.new
-    
-    # TODO: We dont use domains or grades for teachers anymore.
-    load_domains_and_grades
+    @school_selector = Portal::SchoolSelector.new(params)
     respond_to do |format|
       format.html # new.html.erb
       format.xml  { render :xml => @portal_teacher }
@@ -40,12 +51,13 @@ class Portal::TeachersController < ApplicationController
   def edit
     @portal_teacher = Portal::Teacher.find(params[:id])
     @user = @portal_teacher.user
+    @school_selector = Portal::SchoolSelector.new(params)
   end
 
   # POST /portal_teachers
   # POST /portal_teachers.xml
+  # TODO: move some of this into the teachers model.
   def create
-    portal_school = Portal::School.find_by_id(params[:school][:id])
     
     # TODO: Teachers DO NOT HAVE grades or Domains.
     @portal_grade = nil
@@ -56,35 +68,32 @@ class Portal::TeachersController < ApplicationController
     if params[:domain]
       @domain = RiGse::Domain.find(params[:domain][:id])
     end
-    load_domains_and_grades
 
     @user = User.new(params[:user])
-    #if @user && @user.valid?
-    #  @user.register!
-    #  @user.save
-    #end
-        
+    @school_selector = Portal::SchoolSelector.new(params)
+
+    if (@user.valid?)
+      # TODO: save backing DB objects
+      # @school_selector.save
+    end
     @portal_teacher = Portal::Teacher.new do |t|
       t.user = @user
       t.domain = @domain
-      t.schools << portal_school if !portal_school.nil?
+      t.schools << @school_selector.school if @school_selector.valid?
       t.grades << @portal_grade if !@portal_grade.nil?
     end
-    
-    #if @user.errors.empty? && @portal_teacher.save
-    if @user.valid? && @portal_teacher.valid? && !portal_school.nil?
-      if @user.register! && @portal_teacher.save
+    @resource = @user
+    if @user.valid? && @school_selector.valid? && @resource.save! && @portal_teacher.save
       # will redirect:
-        successful_creation(@user)
-        return
-      end
+      return successful_creation(@user)
     end
 
     # Luckily, ActiveRecord errors allow you to attach errors to arbitrary, non-existant attributes
     # will redirect:
-    @user.errors.add(:you, "must select a school") if portal_school.nil?
-    failed_creation
+    @user.errors.add(:you, "must select a school") unless @school_selector.valid?
     
+    
+    failed_creation
   end
 
   # PUT /portal_teachers/1
@@ -118,30 +127,16 @@ class Portal::TeachersController < ApplicationController
   
   def successful_creation(user)
     # Render the UsersController#thanks page instead of showing a flash message.
-    render :template => 'users/thanks'
+    redirect_to thanks_for_sign_up_url(:type=>"teacher",:login=>"#{user.login}")
+
   end
   
   def failed_creation(message = 'Sorry, there was an error creating your account')
-    # force the current_user to anonymous, because we have not successfully created an account yet.
-    # edge case, which we might need a more integrated solution for??
-    self.current_user = User.anonymous
+    # FIXME is the sign_out necessary??? The user should not be signed in yet, however
+    # previously there was a current_visitor=User.anonymous here.
+    sign_out :user
     flash.now[:error] = message
     render :action => :new
   end
-  
-  
-  private 
-  def load_domains_and_grades
-    # @portal_districts = Portal::District.virtual + Portal::District.real
-    # Maybe this easier, and cleaner:
-    @portal_districts = Portal::District.find(:all, :order => :name)
-    @portal_grades = Portal::Grade.active
-    if (@portal_grades && @portal_grades.size > 1)
-      @default_grade_id = @portal_grades.last.id
-    end
-    @domains = RiGse::Domain.all
-  end
-  
-  
   
 end

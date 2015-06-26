@@ -79,6 +79,13 @@ class Reports::Excel
     students  = sorted_students(students)
   end
 
+  def report_learners_for_runnables(runnables)
+    runnables = [runnables] unless runnables.respond_to? :count
+    offerings = runnables.map { |i| i.offerings }.flatten.uniq.compact
+    learners = offerings.map {|o| o.learners}.flatten.compact
+    learners.map {|l| l.report_learner }
+  end
+
   def sorted_students(students)
     # sort by school and last
     students.sort{ |a,b|
@@ -94,7 +101,7 @@ class Reports::Excel
     learners = student.learners
     learners.reject! { |l| l.offering.nil? || l.offering.clazz.nil? || l.offering.runnable.nil? }
     learners.sort! { |a,b|
-      aname = clazz_name_for(a.offering) 
+      aname = clazz_name_for(a.offering)
       bname = clazz_name_for(b.offering)
       aname <=> bname
     }
@@ -104,17 +111,25 @@ class Reports::Excel
     name = thing.school ? (thing.school.name || "School #{thing.school.name}") : "No School"
     return name
   end
-  
+
   def clazz_name_for(offering)
     name = offering.clazz ? (offering.clazz.name || "Class: #{offering.clazz.id}") : "No Class"
     return name
   end
   def learner_id(learner)
-    "#{learner.student.id}_#{learner.offering.clazz.id}"
+    return "#{learner.student_id}_#{learner.class_id}" if learner.kind_of?(Report::Learner)
+    return "#{learner.student.id}_#{learner.offering.clazz.id}"
   end
 
   def user_id(learner)
-    learner.student.user.id
+    return learner.user_id if learner.kind_of?(Report::Learner)
+    return learner.student.user.id
+  end
+
+  def permission_forms(report_learner)
+    results = report_learner.permission_forms
+    results = "none" if results.blank?
+    results
   end
 
   def learner_login(learner)
@@ -122,14 +137,52 @@ class Reports::Excel
   end
 
   def learner_name(learner)
-    "#{learner.student.user.last_name}, #{learner.student.user.first_name}"
+    "#{learner.student.user.first_name} #{learner.student.user.last_name}"
   end
 
-  def learner_info_cells(learner)
-    clazz = learner.offering.clazz
-    school = clazz.school
-    teachers = clazz.teachers.flatten.compact.uniq.map{|t| t.name }.join(",")
-    return [learner_id(learner), clazz.name, school_name_for(clazz), user_id(learner), learner_login(learner), learner_name(learner), teachers]
+  def report_learner_info_cells(report_learners)
+    report_learner = report_learners.first
+
+    return [
+      report_learner.student_id,
+      report_learners.map { |l| l.learner_id }.join(", "),
+      report_learner.class_id,
+      report_learner.class_name,
+      report_learner.school_name,
+      user_id(report_learner),
+      permission_forms(report_learner),
+      report_learner.username,
+      report_learner.student_name,
+      report_learner.teachers_name
+    ]
   end
 
+  def common_header
+    return [
+      Reports::ColumnDefinition.new(:title => "Student ID",    :width => 10),
+      Reports::ColumnDefinition.new(:title => "Learner ID(s)", :width => 10),
+      Reports::ColumnDefinition.new(:title => "Class ID",      :width => 10),
+      Reports::ColumnDefinition.new(:title => "Class",         :width => 25),
+      Reports::ColumnDefinition.new(:title => "School",        :width => 25),
+      Reports::ColumnDefinition.new(:title => "UserID",        :width => 25),
+      Reports::ColumnDefinition.new(:title => "Perm. Forms",   :width => 25),
+      Reports::ColumnDefinition.new(:title => "Username",      :width => 25),
+      Reports::ColumnDefinition.new(:title => "Student Name",  :width => 25),
+      Reports::ColumnDefinition.new(:title => "Teachers",      :width => 50)
+    ]
+  end
+
+  def get_containers(runnable)
+    containers = []
+    if runnable.kind_of?(Investigation)
+      containers = runnable.activities.student_only
+    elsif runnable.kind_of?(Activity)
+      containers = runnable.sections.student_only
+    elsif runnable.kind_of?(Section)
+      containers = runnable.pages.student_only
+    elsif runnable.kind_of?(Page)
+      containers = [runnable]
+    end
+    return containers
+  end
 end

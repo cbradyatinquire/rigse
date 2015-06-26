@@ -1,5 +1,5 @@
 class Probe::DataFilter < ActiveRecord::Base
-  set_table_name "probe_data_filters"
+  self.table_name = "probe_data_filters"
 
   include Changeable
   acts_as_replicatable
@@ -15,5 +15,4 @@ class Probe::DataFilter < ActiveRecord::Base
       @@searchable_attributes
     end
   end
-
 end
